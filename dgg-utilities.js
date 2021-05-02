@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.0.2
+// @version      1.1
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        www.destiny.gg/embed/chat*
@@ -16,6 +16,7 @@ const timeOptions = {
 };
 
 var phrases = [];
+var nukes = [];
 var lastEmbeds = window.localStorage.getItem("vyneer-util.lastEmbeds")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.lastEmbeds"))
   : false;
@@ -29,6 +30,43 @@ var customPhrases = window.localStorage.getItem("vyneer-util.customPhrases")
 var chatlines = document.querySelector(".chat-lines");
 var textarea = document.querySelector("#chat-input-control");
 
+// make an observer to show an update message after the "connected" alert in chat
+let updateObserver = new MutationObserver((mutations) => {
+  for (let mutation of mutations) {
+    for (let node of mutation.addedNodes) {
+      if (node.matches('div[class="msg-chat msg-status "]')) {
+        if (
+          node
+            .querySelector('span[class="text"]')
+            .innerHTML.includes("Connected.")
+        ) {
+          // checking the scripts version
+          // we check the difference between the current install's version and the API
+          // if the API shows there's an update, show a message
+          GM.xmlHttpRequest({
+            url: "https://vyneer.me/tools/script",
+            onload: (response) => {
+              var data = JSON.parse(response.response);
+              if ("link" in data && "version" in data) {
+                if (GM_info.script.version < data.version) {
+                  new DGGMsg(
+                    `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}">${data.link}</a>`,
+                    "msg-info msg-historical",
+                    ""
+                  );
+                  chatlines.scrollTop = chatlines.scrollHeight;
+                }
+              }
+            },
+          });
+          updateObserver.disconnect();
+        }
+      }
+    }
+  }
+});
+updateObserver.observe(chatlines, {childList: true});
+
 // making a button for embeds
 let chatToolsArea = document.querySelectorAll(".chat-tools-group")[1];
 let embedsButton = document.createElement("a");
@@ -40,10 +78,60 @@ embedsButton_i.className = "btn-icon";
 embedsButton_i.innerHTML = "🎬";
 embedsButton_i.style.fontStyle = "normal";
 embedsButton_i.style.fontSize = "larger";
+embedsButton_i.style.textAlign = "center";
 
-// appending that button to the right area on screen
+// making a button for the nuke alert
+let chatWhispersArea = document.querySelectorAll(".chat-tools-group")[0];
+let nukeAlertButton = document.createElement("a");
+nukeAlertButton.id = "nukes-btn";
+nukeAlertButton.className = "chat-tool-btn";
+nukeAlertButton.title = "Nukes";
+nukeAlertButton.style.display = "none";
+let nukeAlertButton_i = document.createElement("i");
+nukeAlertButton_i.className = "btn-icon";
+nukeAlertButton_i.innerHTML = "☢";
+nukeAlertButton_i.style.fontStyle = "normal";
+nukeAlertButton_i.style.fontSize = "larger";
+nukeAlertButton_i.style.textAlign = "center";
+nukeAlertButton_i.style.color = "yellow";
+nukeAlertButton_i.style.opacity = 1;
+
+// making a button for the mutelinks alert
+let linksAlertButton = document.createElement("a");
+linksAlertButton.id = "mutelinks-btn";
+linksAlertButton.className = "chat-tool-btn";
+linksAlertButton.title = "Mutelinks";
+linksAlertButton.style.display = "none";
+linksAlertButton.style.justifyContent = "center";
+linksAlertButton.style.width = "auto";
+linksAlertButton.style.cursor = "unset";
+let linksAlertButton_i = document.createElement("i");
+linksAlertButton_i.className = "btn-icon";
+linksAlertButton_i.innerHTML = "🔗";
+linksAlertButton_i.style.fontStyle = "normal";
+linksAlertButton_i.style.fontSize = "larger";
+linksAlertButton_i.style.textAlign = "center";
+linksAlertButton_i.style.opacity = 1;
+let linksAlertButton_span = document.createElement("span");
+linksAlertButton_span.className = "btn-icon";
+linksAlertButton_span.innerHTML = "";
+linksAlertButton_span.style.opacity = 1;
+linksAlertButton_span.style.left = "100%";
+linksAlertButton_span.style.color = "#FFF7F9";
+linksAlertButton_span.style.fontSize = "0.75em";
+linksAlertButton_span.style.position = "absolute";
+linksAlertButton_span.style.verticalAlign = "text-button";
+linksAlertButton_span.style.marginLeft = "0.25em";
+linksAlertButton_span.style.top = "4px";
+
+// appending buttons to the right area on screen
 embedsButton.appendChild(embedsButton_i);
+nukeAlertButton.appendChild(nukeAlertButton_i);
+linksAlertButton.appendChild(linksAlertButton_i);
+linksAlertButton.appendChild(linksAlertButton_span);
 chatToolsArea.prepend(embedsButton);
+chatWhispersArea.appendChild(nukeAlertButton);
+chatWhispersArea.appendChild(linksAlertButton);
 
 // creating a settings title
 let settingsArea = document.querySelector("#chat-settings-form");
@@ -320,24 +408,76 @@ embedsButton.addEventListener("click", () => {
   });
 });
 
-setTimeout(() => {
-  // checking the scripts version
-  // we check the difference between the current install's version and the API
-  // if the API shows there's an update, show a message
+// function to check nukes and mutelinks
+function nukesAndLinks() {
   GM.xmlHttpRequest({
-    url: "https://vyneer.me/tools/script",
+    url: "https://vyneer.me/tools/nukes",
     onload: (response) => {
       var data = JSON.parse(response.response);
-      if ("link" in data && "version" in data) {
-        if (GM_info.script.version < data.version) {
-          new DGGMsg(
-            `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}">${data.link}</a>`,
-            "msg-info msg-historical",
-            ""
-          );
-          chatlines.scrollTop = chatlines.scrollHeight;
+      if (data.length > 0) {
+        nukeAlertButton.style.display = "";
+      } else {
+        if (nukeAlertButton.style.display != "none") {
+          nukeAlertButton.style.display = "none";
+        }
+      }
+      data.forEach((entry) => {
+        nukes.push(entry);
+      });
+    },
+  });
+  
+  GM.xmlHttpRequest({
+    url: "https://vyneer.me/tools/mutelinks",
+    onload: (response) => {
+      var data = JSON.parse(response.response);
+      if (data[0].status == "on") {
+        linksAlertButton.style.display = "inline-flex";
+        linksAlertButton_span.innerHTML = "on";
+      } else if (data[0].status == "all") {
+        linksAlertButton.style.display = "inline-flex";
+        linksAlertButton_span.innerHTML = "all";
+      } else if (data[0].status == "off") {
+        if (linksAlertButton.style.display != "none") {
+          linksAlertButton.style.display = "none";
         }
       }
     },
   });
-}, 2000);
+}
+
+nukesAndLinks();
+
+setInterval(() => {
+  nukesAndLinks();
+}, 15000);
+
+// adding an event listener to the nukes button
+// once you press it it fetches nukes from vyneer.me and displays them in chat
+nukeAlertButton.addEventListener("click", () => {
+  new DGGMsg(
+    `Showing current nukes...`,
+    "msg-info",
+    ""
+  );
+
+  chatlines.scrollTop = chatlines.scrollHeight;
+
+  if (nukes.length > 0) {
+    nukes.forEach((result) => {
+      new DGGMsg(
+        `${result.word} (${result.type.toString().toLowerCase()}d for ${result.duration})`,
+        "msg-status msg-historical",
+        ""
+      );
+      chatlines.scrollTop = chatlines.scrollHeight;
+    })
+  } else {
+    new DGGMsg(
+      `Looks like there's no data regarding the nukes.`,
+      "msg-status msg-error",
+      ""
+    );
+    chatlines.scrollTop = chatlines.scrollHeight;
+  }
+});
