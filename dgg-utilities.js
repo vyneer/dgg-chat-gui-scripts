@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.0.1
+// @version      1.0.2
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        www.destiny.gg/embed/chat*
@@ -322,6 +322,8 @@ embedsButton.addEventListener("click", () => {
 
 setTimeout(() => {
   // checking the scripts version
+  // we check the difference between the current install's version and the API
+  // if the API shows there's an update, show a message
   GM.xmlHttpRequest({
     url: "https://vyneer.me/tools/script",
     onload: (response) => {
@@ -333,6 +335,7 @@ setTimeout(() => {
             "msg-info msg-historical",
             ""
           );
+          chatlines.scrollTop = chatlines.scrollHeight;
         }
       }
     },
