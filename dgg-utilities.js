@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.0
+// @version      1.0.1
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        www.destiny.gg/embed/chat*
@@ -203,14 +203,14 @@ GM.xmlHttpRequest({
 
 const matchStringOrRegex = (message, phrase) => {
   const cleanMessage = message.trim();
-  const cleanPhrase = phrase.trim();
+  const cleanPhrase = phrase.trim().toLowerCase();
   if (/^\/.*\/$/.test(cleanPhrase)) {
     const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
     if (cleanPhrase.length <= 2) return false;
     const regex = new RegExp(regexString, "i");
     return regex.test(cleanMessage);
   }
-  return message.includes(phrase);
+  return message.includes(cleanPhrase);
 };
 
 // adding an event listener to chat's input box
@@ -322,9 +322,6 @@ embedsButton.addEventListener("click", () => {
 
 setTimeout(() => {
   // checking the scripts version
-  // first we check if there's a item in local storage named "vyneer"
-  // if not, create one
-  // if there is one and there's a difference, show an alert that you can update to the latest version
   GM.xmlHttpRequest({
     url: "https://vyneer.me/tools/script",
     onload: (response) => {
