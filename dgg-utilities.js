@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.1
+// @version      1.1.1
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        www.destiny.gg/embed/chat*
@@ -65,7 +65,7 @@ let updateObserver = new MutationObserver((mutations) => {
     }
   }
 });
-updateObserver.observe(chatlines, {childList: true});
+updateObserver.observe(chatlines, { childList: true });
 
 // making a button for embeds
 let chatToolsArea = document.querySelectorAll(".chat-tools-group")[1];
@@ -414,6 +414,7 @@ function nukesAndLinks() {
     url: "https://vyneer.me/tools/nukes",
     onload: (response) => {
       var data = JSON.parse(response.response);
+      nukes = [];
       if (data.length > 0) {
         nukeAlertButton.style.display = "";
       } else {
@@ -426,7 +427,7 @@ function nukesAndLinks() {
       });
     },
   });
-  
+
   GM.xmlHttpRequest({
     url: "https://vyneer.me/tools/mutelinks",
     onload: (response) => {
@@ -455,23 +456,21 @@ setInterval(() => {
 // adding an event listener to the nukes button
 // once you press it it fetches nukes from vyneer.me and displays them in chat
 nukeAlertButton.addEventListener("click", () => {
-  new DGGMsg(
-    `Showing current nukes...`,
-    "msg-info",
-    ""
-  );
+  new DGGMsg(`Showing current nukes...`, "msg-info", "");
 
   chatlines.scrollTop = chatlines.scrollHeight;
 
   if (nukes.length > 0) {
     nukes.forEach((result) => {
       new DGGMsg(
-        `${result.word} (${result.type.toString().toLowerCase()}d for ${result.duration})`,
+        `${result.word} (${result.type.toString().toLowerCase()}d for ${
+          result.duration
+        })`,
         "msg-status msg-historical",
         ""
       );
       chatlines.scrollTop = chatlines.scrollHeight;
-    })
+    });
   } else {
     new DGGMsg(
       `Looks like there's no data regarding the nukes.`,
