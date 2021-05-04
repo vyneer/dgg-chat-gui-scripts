@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.1.1
+// @version      1.1.2
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        www.destiny.gg/embed/chat*
@@ -50,7 +50,7 @@ let updateObserver = new MutationObserver((mutations) => {
               if ("link" in data && "version" in data) {
                 if (GM_info.script.version < data.version) {
                   new DGGMsg(
-                    `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}">${data.link}</a>`,
+                    `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
                     "msg-info msg-historical",
                     ""
                   );
