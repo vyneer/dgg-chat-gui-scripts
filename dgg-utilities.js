@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.1.2
+// @version      1.1.3
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        www.destiny.gg/embed/chat*
@@ -242,13 +242,30 @@ class EmbedUrlFormatter {
   format(str) {
     // Open embed links in a new tab when in embedded/popout chat.
     const target = this.currentPath === this.bigscreenPath ? "_top" : "_blank";
+    let source;
+    switch (str.replace(this.bigscreenregex, '$3').slice(1)) {
+      case "twitch":
+        source = "https://twitch.tv/" + str.split("/")[1]
+        break;
+      case "twitch-vod":
+        source = "https://twitch.tv/videos/" + str.split("/")[1]
+        break;
+      case "twitch-clip":
+        source = "https://clips.twitch.tv/" + str.split("/")[1]
+        break;
+      case "youtube":
+        source = "https://youtu.be/" + str.split("/")[1]
+        break;
+    }
     return str.replace(
       this.bigscreenregex,
       '$1<a class="externallink bookmarklink" href="' +
         this.url +
         '$2" target="' +
         target +
-        '">$2</a>'
+        '">$2</a> <a class="externallink bookmarklink" href="' +
+        source +
+        '" target ="_blank">(source)</a>'
     );
   }
 }
