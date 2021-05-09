@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.1.3
+// @version      1.1.4
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        www.destiny.gg/embed/chat*
@@ -163,10 +163,13 @@ let embedTimeGroup = document.createElement("div");
 embedTimeGroup.className = "form-group row";
 let embedTimeLabel = document.createElement("label");
 embedTimeLabel.innerHTML = "Embed Time Span";
+embedTimeLabel.title = "Show embeds from the last amount of minutes that this is set to"
 embedTimeGroup.appendChild(embedTimeLabel);
-let embedTimeArea = document.createElement("textarea");
-embedTimeArea.style.resize = "vertical";
+let embedTimeArea = document.createElement("input");
+embedTimeArea.type = "number";
 embedTimeArea.className = "form-control";
+embedTimeArea.max = 60;
+embedTimeArea.min = 5;
 embedTimeArea.placeholder = "5 to 60 minutes";
 embedTimeArea.value = embedTime;
 embedTimeArea.addEventListener("change", () => {
@@ -180,6 +183,7 @@ let customPhrasesGroup = document.createElement("div");
 customPhrasesGroup.className = "form-group row";
 let customPhrasesLabel = document.createElement("label");
 customPhrasesLabel.innerHTML = "Custom Alert Phrases";
+customPhrasesLabel.title = "Phrases that will color the input area red if you type them in"
 customPhrasesGroup.appendChild(customPhrasesLabel);
 let customPhrasesArea = document.createElement("textarea");
 customPhrasesArea.style.resize = "vertical";
