@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.1.4
+// @version      1.2
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        www.destiny.gg/embed/chat*
@@ -17,6 +17,9 @@ const timeOptions = {
 
 var phrases = [];
 var nukes = [];
+var embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.embedsOnLaunch"))
+  : false;
 var lastEmbeds = window.localStorage.getItem("vyneer-util.lastEmbeds")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.lastEmbeds"))
   : false;
@@ -59,6 +62,12 @@ let updateObserver = new MutationObserver((mutations) => {
               }
             },
           });
+
+          // show embeds on launch
+          if (embedsOnLaunch) {
+            embeds();
+          }
+
           updateObserver.disconnect();
         }
       }
@@ -141,6 +150,24 @@ title.innerHTML = "d.gg utilities";
 settingsArea.appendChild(title);
 
 // creating a latest embeds value setting
+let embedsOnLaunchGroup = document.createElement("div");
+embedsOnLaunchGroup.className = "form-group checkbox";
+let embedsOnLaunchLabel = document.createElement("label");
+embedsOnLaunchLabel.innerHTML = "Automatically show embeds on chat connect";
+embedsOnLaunchGroup.appendChild(embedsOnLaunchLabel);
+let embedsOnLaunchCheck = document.createElement("input");
+embedsOnLaunchCheck.type = "checkbox";
+embedsOnLaunchCheck.checked = embedsOnLaunch;
+embedsOnLaunchCheck.addEventListener("change", () => {
+  embedsOnLaunch = embedsOnLaunchCheck.checked;
+  window.localStorage.setItem(
+    "vyneer-util.embedsOnLaunch",
+    embedsOnLaunchCheck.checked
+  );
+});
+embedsOnLaunchLabel.prepend(embedsOnLaunchCheck);
+
+// creating a latest embeds value setting
 let lastEmbedsGroup = document.createElement("div");
 lastEmbedsGroup.className = "form-group checkbox";
 let lastEmbedsLabel = document.createElement("label");
@@ -163,7 +190,9 @@ let embedTimeGroup = document.createElement("div");
 embedTimeGroup.className = "form-group row";
 let embedTimeLabel = document.createElement("label");
 embedTimeLabel.innerHTML = "Embed Time Span";
-embedTimeLabel.title = "Show embeds from the last amount of minutes that this is set to"
+embedTimeLabel.title =
+  "Show embeds from the last amount of minutes that this is set to";
+embedTimeLabel.style.marginBottom = 0;
 embedTimeGroup.appendChild(embedTimeLabel);
 let embedTimeArea = document.createElement("input");
 embedTimeArea.type = "number";
@@ -172,6 +201,7 @@ embedTimeArea.max = 60;
 embedTimeArea.min = 5;
 embedTimeArea.placeholder = "5 to 60 minutes";
 embedTimeArea.value = embedTime;
+embedTimeArea.style.marginLeft = ".6em";
 embedTimeArea.addEventListener("change", () => {
   embedTime = embedTimeArea.value;
   window.localStorage.setItem("vyneer-util.embedTime", embedTimeArea.value);
@@ -183,7 +213,8 @@ let customPhrasesGroup = document.createElement("div");
 customPhrasesGroup.className = "form-group row";
 let customPhrasesLabel = document.createElement("label");
 customPhrasesLabel.innerHTML = "Custom Alert Phrases";
-customPhrasesLabel.title = "Phrases that will color the input area red if you type them in"
+customPhrasesLabel.title =
+  "Phrases that will color the input area red if you type them in";
 customPhrasesGroup.appendChild(customPhrasesLabel);
 let customPhrasesArea = document.createElement("textarea");
 customPhrasesArea.style.resize = "vertical";
@@ -209,6 +240,7 @@ customPhrasesArea.addEventListener("change", () => {
 customPhrasesGroup.appendChild(customPhrasesArea);
 
 // appending all the settings to our area
+settingsArea.appendChild(embedsOnLaunchGroup);
 settingsArea.appendChild(lastEmbedsGroup);
 settingsArea.appendChild(embedTimeGroup);
 settingsArea.appendChild(customPhrasesGroup);
@@ -247,18 +279,18 @@ class EmbedUrlFormatter {
     // Open embed links in a new tab when in embedded/popout chat.
     const target = this.currentPath === this.bigscreenPath ? "_top" : "_blank";
     let source;
-    switch (str.replace(this.bigscreenregex, '$3').slice(1)) {
+    switch (str.replace(this.bigscreenregex, "$3").slice(1)) {
       case "twitch":
-        source = "https://twitch.tv/" + str.split("/")[1]
+        source = "https://twitch.tv/" + str.split("/")[1];
         break;
       case "twitch-vod":
-        source = "https://twitch.tv/videos/" + str.split("/")[1]
+        source = "https://twitch.tv/videos/" + str.split("/")[1];
         break;
       case "twitch-clip":
-        source = "https://clips.twitch.tv/" + str.split("/")[1]
+        source = "https://clips.twitch.tv/" + str.split("/")[1];
         break;
       case "youtube":
-        source = "https://youtu.be/" + str.split("/")[1]
+        source = "https://youtu.be/" + str.split("/")[1];
         break;
     }
     return str.replace(
@@ -401,6 +433,11 @@ function serveEmbeds(data, emb) {
 // adding an event listener to the new embeds button
 // once you press it it fetches embeds from vyneer.me and displays them in chat
 embedsButton.addEventListener("click", () => {
+  embeds();
+});
+
+// function to show embeds
+function embeds() {
   let embedUrl;
 
   if (!lastEmbeds) {
@@ -427,7 +464,7 @@ embedsButton.addEventListener("click", () => {
       serveEmbeds(data, lastEmbeds);
     },
   });
-});
+}
 
 // function to check nukes and mutelinks
 function nukesAndLinks() {
