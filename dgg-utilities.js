@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.2
+// @version      1.2.1
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
-// @match        www.destiny.gg/embed/chat*
+// @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
 // @grant        GM.xmlHttpRequest
 // @connect      vyneer.me
 // ==/UserScript==
@@ -145,7 +145,7 @@ chatWhispersArea.appendChild(linksAlertButton);
 // creating a settings title
 let settingsArea = document.querySelector("#chat-settings-form");
 let title = document.createElement("h4");
-title.innerHTML = "d.gg utilities";
+title.innerHTML = `d.gg utilities v${GM_info.script.version}`;
 // appending it to the settings menu
 settingsArea.appendChild(title);
 
@@ -473,16 +473,20 @@ function nukesAndLinks() {
     onload: (response) => {
       var data = JSON.parse(response.response);
       nukes = [];
-      if (data.length > 0) {
-        nukeAlertButton.style.display = "";
-      } else {
-        if (nukeAlertButton.style.display != "none") {
-          nukeAlertButton.style.display = "none";
+      if (response.status == 200) {
+        if (data.length > 0) {
+          nukeAlertButton.style.display = "";
+        } else {
+          if (nukeAlertButton.style.display != "none") {
+            nukeAlertButton.style.display = "none";
+          }
         }
+        data.forEach((entry) => {
+          nukes.push(entry);
+        });
+      } else {
+        console.log(`dgg-utils error, can't get nukes - ${response.status}`)
       }
-      data.forEach((entry) => {
-        nukes.push(entry);
-      });
     },
   });
 
@@ -490,16 +494,20 @@ function nukesAndLinks() {
     url: "https://vyneer.me/tools/mutelinks",
     onload: (response) => {
       var data = JSON.parse(response.response);
-      if (data[0].status == "on") {
-        linksAlertButton.style.display = "inline-flex";
-        linksAlertButton_span.innerHTML = "on";
-      } else if (data[0].status == "all") {
-        linksAlertButton.style.display = "inline-flex";
-        linksAlertButton_span.innerHTML = "all";
-      } else if (data[0].status == "off") {
-        if (linksAlertButton.style.display != "none") {
-          linksAlertButton.style.display = "none";
+      if (response.status == 200) {
+        if (data[0].status == "on") {
+          linksAlertButton.style.display = "inline-flex";
+          linksAlertButton_span.innerHTML = "on";
+        } else if (data[0].status == "all") {
+          linksAlertButton.style.display = "inline-flex";
+          linksAlertButton_span.innerHTML = "all";
+        } else if (data[0].status == "off") {
+          if (linksAlertButton.style.display != "none") {
+            linksAlertButton.style.display = "none";
+          }
         }
+      } else {
+        console.log(`dgg-utils error, can't get mutelinks - ${response.status}`)
       }
     },
   });
