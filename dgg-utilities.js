@@ -1,13 +1,33 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.2.1
+// @version      1.2.2
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
 // @grant        GM.xmlHttpRequest
 // @connect      vyneer.me
 // ==/UserScript==
+
+// ==Changelog==
+// v1.2.2 - 2021-08-11
+// * fix whisper count being over the nuke/mutelinks buttons
+// * add a lidl debug mode (see const DEBUG)
+// v1.2.1 - 2021-08-10
+// * fix for violentmonkey users
+// * show version in settings
+// * add some debug messages
+// v1.2 - 2021-07-10
+// * add an option to show embeds on chat connect
+// * slight alignment corrections
+// v1.1.4 - 2021-05-09
+// * add titles to some labels
+// * change embed time span to an input box
+// v1.1.3 - 2021-05-08
+// * add a source link to embeds
+
+// set to true if you wanna see nuke/mutelinks buttons all the time
+const DEBUG = false;
 
 const timeOptions = {
   hour12: false,
@@ -96,6 +116,9 @@ nukeAlertButton.id = "nukes-btn";
 nukeAlertButton.className = "chat-tool-btn";
 nukeAlertButton.title = "Nukes";
 nukeAlertButton.style.display = "none";
+if (DEBUG) {
+  nukeAlertButton.style.display = "";
+}
 let nukeAlertButton_i = document.createElement("i");
 nukeAlertButton_i.className = "btn-icon";
 nukeAlertButton_i.innerHTML = "☢";
@@ -111,6 +134,9 @@ linksAlertButton.id = "mutelinks-btn";
 linksAlertButton.className = "chat-tool-btn";
 linksAlertButton.title = "Mutelinks";
 linksAlertButton.style.display = "none";
+if (DEBUG) {
+  linksAlertButton.style.display = "inline-flex";
+}
 linksAlertButton.style.justifyContent = "center";
 linksAlertButton.style.width = "auto";
 linksAlertButton.style.cursor = "unset";
@@ -479,13 +505,16 @@ function nukesAndLinks() {
         } else {
           if (nukeAlertButton.style.display != "none") {
             nukeAlertButton.style.display = "none";
+            if (DEBUG) {
+              nukeAlertButton.style.display = "";
+            }
           }
         }
         data.forEach((entry) => {
           nukes.push(entry);
         });
       } else {
-        console.log(`dgg-utils error, can't get nukes - ${response.status}`)
+        console.log(`dgg-utils error, can't get nukes - ${response.status}`);
       }
     },
   });
@@ -504,10 +533,15 @@ function nukesAndLinks() {
         } else if (data[0].status == "off") {
           if (linksAlertButton.style.display != "none") {
             linksAlertButton.style.display = "none";
+            if (DEBUG) {
+              linksAlertButton.style.display = "inline-flex";
+            }
           }
         }
       } else {
-        console.log(`dgg-utils error, can't get mutelinks - ${response.status}`)
+        console.log(
+          `dgg-utils error, can't get mutelinks - ${response.status}`
+        );
       }
     },
   });
@@ -518,6 +552,15 @@ nukesAndLinks();
 setInterval(() => {
   nukesAndLinks();
 }, 15000);
+
+// make an observer move nuke/mutelinks buttons based on amount of whispers
+let marginObserver = new MutationObserver((mutations) => {
+  nukeAlertButton.style.marginLeft = `${mutations[0].target.offsetWidth}px`;
+});
+marginObserver.observe(
+  document.querySelector("#chat-whisper-unread-indicator"),
+  { characterData: false, attributes: false, childList: true, subtree: false }
+);
 
 // adding an event listener to the nukes button
 // once you press it it fetches nukes from vyneer.me and displays them in chat
