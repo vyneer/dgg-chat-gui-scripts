@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.2.2
+// @version      1.3
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -10,6 +10,11 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.3 - 2021-08-12
+// * added an option to show last embeds if no one embedded anything in x minutes
+// * nuked phrases will now color the text area if typed
+// * you can now set custom colors for text area alerts
+// * some bug fixes
 // v1.2.2 - 2021-08-11
 // * fix whisper count being over the nuke/mutelinks buttons
 // * add a lidl debug mode (see const DEBUG)
@@ -23,8 +28,6 @@
 // v1.1.4 - 2021-05-09
 // * add titles to some labels
 // * change embed time span to an input box
-// v1.1.3 - 2021-05-08
-// * add a source link to embeds
 
 // set to true if you wanna see nuke/mutelinks buttons all the time
 const DEBUG = false;
@@ -43,12 +46,24 @@ var embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
 var lastEmbeds = window.localStorage.getItem("vyneer-util.lastEmbeds")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.lastEmbeds"))
   : false;
+var lastIfNone = window.localStorage.getItem("vyneer-util.lastIfNone")
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.lastIfNone"))
+  : false;
 var embedTime = window.localStorage.getItem("vyneer-util.embedTime")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedTime"))
   : 30;
+var phraseColor = window.localStorage.getItem("vyneer-util.phraseColor")
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.phraseColor"))
+  : "1f0000";
+var nukeColor = window.localStorage.getItem("vyneer-util.nukeColor")
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.nukeColor"))
+  : "1f1500";
 var customPhrases = window.localStorage.getItem("vyneer-util.customPhrases")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.customPhrases"))
   : [];
+var customColor = window.localStorage.getItem("vyneer-util.customColor")
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.customColor"))
+  : "1f0000";
 
 var chatlines = document.querySelector(".chat-lines");
 var textarea = document.querySelector("#chat-input-control");
@@ -175,13 +190,14 @@ title.innerHTML = `d.gg utilities v${GM_info.script.version}`;
 // appending it to the settings menu
 settingsArea.appendChild(title);
 
-// creating a latest embeds value setting
+// creating a show embeds on connect setting
 let embedsOnLaunchGroup = document.createElement("div");
 embedsOnLaunchGroup.className = "form-group checkbox";
 let embedsOnLaunchLabel = document.createElement("label");
 embedsOnLaunchLabel.innerHTML = "Automatically show embeds on chat connect";
 embedsOnLaunchGroup.appendChild(embedsOnLaunchLabel);
 let embedsOnLaunchCheck = document.createElement("input");
+embedsOnLaunchCheck.name = "embedsOnLaunch";
 embedsOnLaunchCheck.type = "checkbox";
 embedsOnLaunchCheck.checked = embedsOnLaunch;
 embedsOnLaunchCheck.addEventListener("change", () => {
@@ -200,6 +216,7 @@ let lastEmbedsLabel = document.createElement("label");
 lastEmbedsLabel.innerHTML = "Show 5 latest embeds, instead of top 5";
 lastEmbedsGroup.appendChild(lastEmbedsLabel);
 let lastEmbedsCheck = document.createElement("input");
+lastEmbedsCheck.name = "lastEmbeds";
 lastEmbedsCheck.type = "checkbox";
 lastEmbedsCheck.checked = lastEmbeds;
 lastEmbedsCheck.addEventListener("change", () => {
@@ -211,6 +228,26 @@ lastEmbedsCheck.addEventListener("change", () => {
 });
 lastEmbedsLabel.prepend(lastEmbedsCheck);
 
+// creating a show last embeds if none in x minutes setting
+let lastIfNoneGroup = document.createElement("div");
+lastIfNoneGroup.className = "form-group checkbox";
+let lastIfNoneLabel = document.createElement("label");
+lastIfNoneLabel.innerHTML =
+  "Show 5 latest embeds if no one embedded anything recently";
+lastIfNoneGroup.appendChild(lastIfNoneLabel);
+let lastIfNoneCheck = document.createElement("input");
+lastIfNoneCheck.name = "lastIfNone";
+lastIfNoneCheck.type = "checkbox";
+lastIfNoneCheck.checked = lastIfNone;
+lastIfNoneCheck.addEventListener("change", () => {
+  lastIfNone = lastIfNoneCheck.checked;
+  window.localStorage.setItem(
+    "vyneer-util.lastIfNone",
+    lastIfNoneCheck.checked
+  );
+});
+lastIfNoneLabel.prepend(lastIfNoneCheck);
+
 // creating an embed time value setting
 let embedTimeGroup = document.createElement("div");
 embedTimeGroup.className = "form-group row";
@@ -221,6 +258,7 @@ embedTimeLabel.title =
 embedTimeLabel.style.marginBottom = 0;
 embedTimeGroup.appendChild(embedTimeLabel);
 let embedTimeArea = document.createElement("input");
+embedTimeArea.name = "embedTimeArea";
 embedTimeArea.type = "number";
 embedTimeArea.className = "form-control";
 embedTimeArea.max = 60;
@@ -233,6 +271,74 @@ embedTimeArea.addEventListener("change", () => {
   window.localStorage.setItem("vyneer-util.embedTime", embedTimeArea.value);
 });
 embedTimeGroup.appendChild(embedTimeArea);
+
+// creating an phrase textarea color setting
+let phraseColorGroup = document.createElement("div");
+phraseColorGroup.className = "form-group row";
+let phraseColorLabel = document.createElement("label");
+phraseColorLabel.innerHTML = "Text area color on banned phrase";
+phraseColorLabel.title =
+  "The color that text area changes when you type a banned phrase";
+phraseColorLabel.style.marginBottom = 0;
+phraseColorGroup.appendChild(phraseColorLabel);
+let phraseColorArea = document.createElement("input");
+phraseColorArea.name = "phraseColorArea";
+phraseColorArea.type = "text";
+phraseColorArea.className = "form-control";
+phraseColorArea.placeholder = "1f0000";
+phraseColorArea.value = phraseColor;
+phraseColorArea.style.marginLeft = ".6em";
+phraseColorArea.style.width = "60px";
+phraseColorArea.addEventListener("change", () => {
+  if (phraseColorArea.value.length > 0) {
+    phraseColor = phraseColorArea.value;
+    window.localStorage.setItem(
+      "vyneer-util.phraseColor",
+      JSON.stringify(phraseColorArea.value)
+    );
+  } else {
+    phraseColor = "1f0000";
+    window.localStorage.setItem(
+      "vyneer-util.phraseColor",
+      JSON.stringify("1f0000")
+    );
+  }
+});
+phraseColorGroup.appendChild(phraseColorArea);
+
+// creating an nuke textarea color setting
+let nukeColorGroup = document.createElement("div");
+nukeColorGroup.className = "form-group row";
+let nukeColorLabel = document.createElement("label");
+nukeColorLabel.innerHTML = "Text area color on nuked phrase";
+nukeColorLabel.title =
+  "The color that text area changes when you type a nuked phrase";
+nukeColorLabel.style.marginBottom = 0;
+nukeColorGroup.appendChild(nukeColorLabel);
+let nukeColorArea = document.createElement("input");
+nukeColorArea.name = "nukeColorArea";
+nukeColorArea.type = "text";
+nukeColorArea.className = "form-control";
+nukeColorArea.placeholder = "1f1500";
+nukeColorArea.value = nukeColor;
+nukeColorArea.style.marginLeft = ".6em";
+nukeColorArea.style.width = "60px";
+nukeColorArea.addEventListener("change", () => {
+  if (nukeColorArea.value.length > 0) {
+    nukeColor = nukeColorArea.value;
+    window.localStorage.setItem(
+      "vyneer-util.nukeColor",
+      JSON.stringify(nukeColorArea.value)
+    );
+  } else {
+    nukeColor = "1f1500";
+    window.localStorage.setItem(
+      "vyneer-util.nukeColor",
+      JSON.stringify("1f1500")
+    );
+  }
+});
+nukeColorGroup.appendChild(nukeColorArea);
 
 // creating a custom phrases setting
 let customPhrasesGroup = document.createElement("div");
@@ -265,11 +371,49 @@ customPhrasesArea.addEventListener("change", () => {
 });
 customPhrasesGroup.appendChild(customPhrasesArea);
 
+// creating an custom phrase textarea color setting
+let customColorGroup = document.createElement("div");
+customColorGroup.className = "form-group row";
+let customColorLabel = document.createElement("label");
+customColorLabel.innerHTML = "Text area color on custom phrase";
+customColorLabel.title =
+  "The color that text area changes when you type a custom phrase";
+customColorLabel.style.marginBottom = 0;
+customColorGroup.appendChild(customColorLabel);
+let customColorArea = document.createElement("input");
+customColorArea.name = "customColorArea";
+customColorArea.type = "text";
+customColorArea.className = "form-control";
+customColorArea.placeholder = "1f0000";
+customColorArea.value = customColor;
+customColorArea.style.marginLeft = ".6em";
+customColorArea.style.width = "60px";
+customColorArea.addEventListener("change", () => {
+  if (customColorArea.value.length > 0) {
+    customColor = customColorArea.value;
+    window.localStorage.setItem(
+      "vyneer-util.customColor",
+      JSON.stringify(customColorArea.value)
+    );
+  } else {
+    customColor = "1f0000";
+    window.localStorage.setItem(
+      "vyneer-util.customColor",
+      JSON.stringify("1f0000")
+    );
+  }
+});
+customColorGroup.appendChild(customColorArea);
+
 // appending all the settings to our area
 settingsArea.appendChild(embedsOnLaunchGroup);
 settingsArea.appendChild(lastEmbedsGroup);
+settingsArea.appendChild(lastIfNoneGroup);
 settingsArea.appendChild(embedTimeGroup);
+settingsArea.appendChild(phraseColorGroup);
+settingsArea.appendChild(nukeColorGroup);
 settingsArea.appendChild(customPhrasesGroup);
+settingsArea.appendChild(customColorGroup);
 
 // small function to escape icky characters
 function escapeRegex(string) {
@@ -385,11 +529,22 @@ const matchStringOrRegex = (message, phrase) => {
 textarea.addEventListener("keyup", () => {
   let text = textarea.value.toLowerCase();
   let resultCustom;
+  let resultNukes;
   let result;
 
   if (phrases.length > 0) {
     result = phrases.find((entry) => {
       if (matchStringOrRegex(text, entry.phrase)) {
+        return true;
+      } else {
+        return false;
+      }
+    });
+  }
+
+  if (nukes.length > 0) {
+    resultNukes = nukes.find((entry) => {
+      if (matchStringOrRegex(text, entry.word)) {
         return true;
       } else {
         return false;
@@ -407,8 +562,12 @@ textarea.addEventListener("keyup", () => {
     });
   }
 
-  if (result != undefined || resultCustom != undefined) {
-    textarea.style.backgroundColor = "#1F0000";
+  if (result != undefined) {
+    textarea.style.backgroundColor = `#${phraseColor}`;
+  } else if (resultCustom != undefined) {
+    textarea.style.backgroundColor = `#${customColor}`;
+  } else if (resultNukes != undefined) {
+    textarea.style.backgroundColor = `#${nukeColor}`;
   } else {
     if (textarea.style.backgroundColor != "") {
       textarea.style.backgroundColor = "";
@@ -417,7 +576,7 @@ textarea.addEventListener("keyup", () => {
 });
 
 // function to simplify appending embeds
-function serveEmbeds(data, emb) {
+function serveEmbeds(data, emb, ifnone) {
   if (data.length > 0) {
     data.forEach((entry) => {
       if (!emb) {
@@ -440,11 +599,29 @@ function serveEmbeds(data, emb) {
     });
   } else {
     if (!emb) {
-      new DGGMsg(
-        `Looks like nobody embedded anything in the last ${embedTime} minutes.`,
-        "msg-status msg-error",
-        ""
-      );
+      if (!ifnone) {
+        new DGGMsg(
+          `Looks like nobody embedded anything in the last ${embedTime} minutes.`,
+          "msg-status msg-error",
+          ""
+        );
+      } else {
+        new DGGMsg(
+          `Looks like nobody embedded anything in the last ${embedTime} minutes, showing you the last embeds instead.`,
+          "msg-status msg-error",
+          ""
+        );
+        GM.xmlHttpRequest({
+          url: `https://vyneer.me/tools/embeds/last`,
+          onload: (response) => {
+            let data = JSON.parse(response.response);
+            if (lastEmbeds) {
+              data = data.reverse();
+            }
+            serveEmbeds(data, true, false);
+          },
+        });
+      }
     } else {
       new DGGMsg(
         `Looks like there's no data regarding the last embeds.`,
@@ -487,7 +664,7 @@ function embeds() {
       if (lastEmbeds) {
         data = data.reverse();
       }
-      serveEmbeds(data, lastEmbeds);
+      serveEmbeds(data, lastEmbeds, lastIfNone);
     },
   });
 }
@@ -498,6 +675,16 @@ function nukesAndLinks() {
     url: "https://vyneer.me/tools/nukes",
     onload: (response) => {
       var data = JSON.parse(response.response);
+      if (DEBUG) {
+        data = [
+          {
+            time: "2020-03-20T14:28:23.382748",
+            type: "meganuke",
+            duration: "10m",
+            word: "test",
+          },
+        ];
+      }
       nukes = [];
       if (response.status == 200) {
         if (data.length > 0) {
