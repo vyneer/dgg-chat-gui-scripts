@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.3.1
+// @version      1.3.2
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -12,6 +12,8 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.3.2 - 2021-08-30
+// * fix phrases autorefresh not clearing the array
 // v1.3.1 - 2021-08-29
 // * phrases autorefresh now too
 // * add an icon :)
@@ -27,9 +29,6 @@
 // * fix for violentmonkey users
 // * show version in settings
 // * add some debug messages
-// v1.2 - 2021-07-10
-// * add an option to show embeds on chat connect
-// * slight alignment corrections
 
 // set to true if you wanna see nuke/mutelinks buttons all the time
 const DEBUG = false;
@@ -510,6 +509,7 @@ function getPhrases() {
     url: "https://vyneer.me/tools/phrases",
     onload: (response) => {
       var data = JSON.parse(response.response);
+      phrases = [];
       data.forEach((entry) => {
         phrases.push(entry);
       });
