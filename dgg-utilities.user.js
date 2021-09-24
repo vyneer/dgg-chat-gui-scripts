@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.3.2
+// @version      1.4
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -12,6 +12,9 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.4 - 2021-09-24
+// * added strims.gg/angelthump to the list of embeds (i know it's technically not an embed but i figured it's still worth adding it)
+// * better update system (you can just left click now pog) (technically a server side change)
 // v1.3.2 - 2021-08-30
 // * fix phrases autorefresh not clearing the array
 // v1.3.1 - 2021-08-29
@@ -25,10 +28,6 @@
 // v1.2.2 - 2021-08-11
 // * fix whisper count being over the nuke/mutelinks buttons
 // * add a lidl debug mode (see const DEBUG)
-// v1.2.1 - 2021-08-10
-// * fix for violentmonkey users
-// * show version in settings
-// * add some debug messages
 
 // set to true if you wanna see nuke/mutelinks buttons all the time
 const DEBUG = false;
@@ -427,7 +426,7 @@ class EmbedUrlFormatter {
   constructor() {
     this.bigscreenPath = "/bigscreen";
     this.bigscreenregex = new RegExp(
-      /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube)\/(?:[A-z0-9_\-]{3,64}))\b/,
+      /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|(?:https:\/\/|http:\/\/|)strims\.gg\/angelthump)\/(?:[A-z0-9_\-]{3,64}))\b/,
       "g"
     );
 
@@ -450,19 +449,24 @@ class EmbedUrlFormatter {
     // Open embed links in a new tab when in embedded/popout chat.
     const target = this.currentPath === this.bigscreenPath ? "_top" : "_blank";
     let source;
-    switch (str.replace(this.bigscreenregex, "$3").slice(1)) {
-      case "twitch":
+    switch (str.replace(this.bigscreenregex, "$3")) {
+      case "#twitch":
         source = "https://twitch.tv/" + str.split("/")[1];
         break;
-      case "twitch-vod":
+      case "#twitch-vod":
         source = "https://twitch.tv/videos/" + str.split("/")[1];
         break;
-      case "twitch-clip":
+      case "#twitch-clip":
         source = "https://clips.twitch.tv/" + str.split("/")[1];
         break;
-      case "youtube":
+      case "#youtube":
         source = "https://youtu.be/" + str.split("/")[1];
         break;
+      case "strims.gg/angelthump":
+        return str.replace(
+          this.bigscreenregex,
+          '$1<a class="externallink bookmarklink" href="https://$2" target="_blank">$2</a>'
+        );
     }
     return str.replace(
       this.bigscreenregex,
