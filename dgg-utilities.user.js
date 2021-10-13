@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.4
+// @version      1.4.1
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -12,6 +12,9 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.4.1 - 2021-10-13
+// * fix mutelinks icon not moving based on the amount of whispers
+// * replace vars with lets
 // v1.4 - 2021-09-24
 // * added strims.gg/angelthump to the list of embeds (i know it's technically not an embed but i figured it's still worth adding it)
 // * better update system (you can just left click now pog) (technically a server side change)
@@ -25,9 +28,6 @@
 // * nuked phrases will now color the text area if typed
 // * you can now set custom colors for text area alerts
 // * some bug fixes
-// v1.2.2 - 2021-08-11
-// * fix whisper count being over the nuke/mutelinks buttons
-// * add a lidl debug mode (see const DEBUG)
 
 // set to true if you wanna see nuke/mutelinks buttons all the time
 const DEBUG = false;
@@ -38,35 +38,35 @@ const timeOptions = {
   minute: "2-digit",
 };
 
-var phrases = [];
-var nukes = [];
-var embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
+let phrases = [];
+let nukes = [];
+let embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedsOnLaunch"))
   : false;
-var lastEmbeds = window.localStorage.getItem("vyneer-util.lastEmbeds")
+let lastEmbeds = window.localStorage.getItem("vyneer-util.lastEmbeds")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.lastEmbeds"))
   : false;
-var lastIfNone = window.localStorage.getItem("vyneer-util.lastIfNone")
+let lastIfNone = window.localStorage.getItem("vyneer-util.lastIfNone")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.lastIfNone"))
   : false;
-var embedTime = window.localStorage.getItem("vyneer-util.embedTime")
+let embedTime = window.localStorage.getItem("vyneer-util.embedTime")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedTime"))
   : 30;
-var phraseColor = window.localStorage.getItem("vyneer-util.phraseColor")
+let phraseColor = window.localStorage.getItem("vyneer-util.phraseColor")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.phraseColor"))
   : "1f0000";
-var nukeColor = window.localStorage.getItem("vyneer-util.nukeColor")
+let nukeColor = window.localStorage.getItem("vyneer-util.nukeColor")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.nukeColor"))
   : "1f1500";
-var customPhrases = window.localStorage.getItem("vyneer-util.customPhrases")
+let customPhrases = window.localStorage.getItem("vyneer-util.customPhrases")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.customPhrases"))
   : [];
-var customColor = window.localStorage.getItem("vyneer-util.customColor")
+let customColor = window.localStorage.getItem("vyneer-util.customColor")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.customColor"))
   : "1f0000";
 
-var chatlines = document.querySelector(".chat-lines");
-var textarea = document.querySelector("#chat-input-control");
+let chatlines = document.querySelector(".chat-lines");
+let textarea = document.querySelector("#chat-input-control");
 
 // make an observer to show an update message after the "connected" alert in chat
 let updateObserver = new MutationObserver((mutations) => {
@@ -84,7 +84,7 @@ let updateObserver = new MutationObserver((mutations) => {
           GM.xmlHttpRequest({
             url: "https://vyneer.me/tools/script",
             onload: (response) => {
-              var data = JSON.parse(response.response);
+              let data = JSON.parse(response.response);
               if ("link" in data && "version" in data) {
                 if (GM_info.script.version < data.version) {
                   new DGGMsg(
@@ -174,14 +174,18 @@ linksAlertButton_span.style.verticalAlign = "text-button";
 linksAlertButton_span.style.marginLeft = "0.25em";
 linksAlertButton_span.style.top = "4px";
 
+// make a container for the custom buttons so that we could move em together
+let utilitiesButtons = document.createElement("div");
+
 // appending buttons to the right area on screen
 embedsButton.appendChild(embedsButton_i);
 nukeAlertButton.appendChild(nukeAlertButton_i);
 linksAlertButton.appendChild(linksAlertButton_i);
 linksAlertButton.appendChild(linksAlertButton_span);
 chatToolsArea.prepend(embedsButton);
-chatWhispersArea.appendChild(nukeAlertButton);
-chatWhispersArea.appendChild(linksAlertButton);
+utilitiesButtons.appendChild(nukeAlertButton);
+utilitiesButtons.appendChild(linksAlertButton);
+chatWhispersArea.appendChild(utilitiesButtons);
 
 // creating a settings title
 let settingsArea = document.querySelector("#chat-settings-form");
@@ -512,7 +516,7 @@ function getPhrases() {
   GM.xmlHttpRequest({
     url: "https://vyneer.me/tools/phrases",
     onload: (response) => {
-      var data = JSON.parse(response.response);
+      let data = JSON.parse(response.response);
       phrases = [];
       data.forEach((entry) => {
         phrases.push(entry);
@@ -685,7 +689,7 @@ function getNukesAndLinks() {
   GM.xmlHttpRequest({
     url: "https://vyneer.me/tools/nukes",
     onload: (response) => {
-      var data = JSON.parse(response.response);
+      let data = JSON.parse(response.response);
       if (DEBUG) {
         data = [
           {
@@ -720,7 +724,7 @@ function getNukesAndLinks() {
   GM.xmlHttpRequest({
     url: "https://vyneer.me/tools/mutelinks",
     onload: (response) => {
-      var data = JSON.parse(response.response);
+      let data = JSON.parse(response.response);
       if (response.status == 200) {
         if (data[0].status == "on") {
           linksAlertButton.style.display = "inline-flex";
@@ -754,7 +758,7 @@ setInterval(() => {
 
 // make an observer move nuke/mutelinks buttons based on amount of whispers
 let marginObserver = new MutationObserver((mutations) => {
-  nukeAlertButton.style.marginLeft = `${mutations[0].target.offsetWidth}px`;
+  utilitiesButtons.style.marginLeft = `${mutations[0].target.offsetWidth}px`;
 });
 marginObserver.observe(
   document.querySelector("#chat-whisper-unread-indicator"),
