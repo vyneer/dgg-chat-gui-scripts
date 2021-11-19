@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.4.1
+// @version      1.5
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -12,6 +12,12 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.5 - 2021-11-19
+// * add an option to disable autoscroll down (so, when the "More messages below" bar appears, it won't scroll down if you uncheck the setting)
+// * add an option to see title/channel name of youtube embeds
+// * add an option to see title of twitch embeds
+// * now shows the nuked phrases when you hover over the nuke button
+// * set saturation of embed icon to 0 (because win 11 made the emoji purple MMMM)
 // v1.4.1 - 2021-10-13
 // * fix mutelinks icon not moving based on the amount of whispers
 // * replace vars with lets
@@ -23,11 +29,6 @@
 // v1.3.1 - 2021-08-29
 // * phrases autorefresh now too
 // * add an icon :)
-// v1.3 - 2021-08-12
-// * added an option to show last embeds if no one embedded anything in x minutes
-// * nuked phrases will now color the text area if typed
-// * you can now set custom colors for text area alerts
-// * some bug fixes
 
 // set to true if you wanna see nuke/mutelinks buttons all the time
 const DEBUG = false;
@@ -40,6 +41,11 @@ const timeOptions = {
 
 let phrases = [];
 let nukes = [];
+let alwaysScrollDown = window.localStorage.getItem(
+  "vyneer-util.alwaysScrollDown"
+)
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.alwaysScrollDown"))
+  : true;
 let embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedsOnLaunch"))
   : false;
@@ -52,6 +58,16 @@ let lastIfNone = window.localStorage.getItem("vyneer-util.lastIfNone")
 let embedTime = window.localStorage.getItem("vyneer-util.embedTime")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedTime"))
   : 30;
+let twitchEmbedFormat = window.localStorage.getItem(
+  "vyneer-util.twitchEmbedFormat"
+)
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.twitchEmbedFormat"))
+  : 1;
+let youtubeEmbedFormat = window.localStorage.getItem(
+  "vyneer-util.youtubeEmbedFormat"
+)
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.youtubeEmbedFormat"))
+  : 1;
 let phraseColor = window.localStorage.getItem("vyneer-util.phraseColor")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.phraseColor"))
   : "1f0000";
@@ -67,6 +83,7 @@ let customColor = window.localStorage.getItem("vyneer-util.customColor")
 
 let chatlines = document.querySelector(".chat-lines");
 let textarea = document.querySelector("#chat-input-control");
+let scrollnotify = document.querySelector(".chat-scroll-notify");
 
 // make an observer to show an update message after the "connected" alert in chat
 let updateObserver = new MutationObserver((mutations) => {
@@ -123,6 +140,7 @@ embedsButton_i.innerHTML = "🎬";
 embedsButton_i.style.fontStyle = "normal";
 embedsButton_i.style.fontSize = "larger";
 embedsButton_i.style.textAlign = "center";
+embedsButton_i.style.filter = "saturate(0)";
 
 // making a button for the nuke alert
 let chatWhispersArea = document.querySelectorAll(".chat-tools-group")[0];
@@ -193,6 +211,25 @@ let title = document.createElement("h4");
 title.innerHTML = `d.gg utilities v${GM_info.script.version}`;
 // appending it to the settings menu
 settingsArea.appendChild(title);
+
+// creating an always scroll down setting
+let alwaysScrollDownGroup = document.createElement("div");
+alwaysScrollDownGroup.className = "form-group checkbox";
+let alwaysScrollDownLabel = document.createElement("label");
+alwaysScrollDownLabel.innerHTML = "Always scroll down chat on button press";
+alwaysScrollDownGroup.appendChild(alwaysScrollDownLabel);
+let alwaysScrollDownCheck = document.createElement("input");
+alwaysScrollDownCheck.name = "alwaysScrollDown";
+alwaysScrollDownCheck.type = "checkbox";
+alwaysScrollDownCheck.checked = alwaysScrollDown;
+alwaysScrollDownCheck.addEventListener("change", () => {
+  alwaysScrollDown = alwaysScrollDownCheck.checked;
+  window.localStorage.setItem(
+    "vyneer-util.alwaysScrollDown",
+    alwaysScrollDownCheck.checked
+  );
+});
+alwaysScrollDownLabel.prepend(alwaysScrollDownCheck);
 
 // creating a show embeds on connect setting
 let embedsOnLaunchGroup = document.createElement("div");
@@ -269,12 +306,99 @@ embedTimeArea.max = 60;
 embedTimeArea.min = 5;
 embedTimeArea.placeholder = "5 to 60 minutes";
 embedTimeArea.value = embedTime;
+embedTimeArea.style.width = "120px";
 embedTimeArea.style.marginLeft = ".6em";
 embedTimeArea.addEventListener("change", () => {
   embedTime = embedTimeArea.value;
   window.localStorage.setItem("vyneer-util.embedTime", embedTimeArea.value);
 });
 embedTimeGroup.appendChild(embedTimeArea);
+
+// creating an twitch embed formatting setting
+let twitchEmbedFormatGroup = document.createElement("div");
+twitchEmbedFormatGroup.className = "form-group";
+let twitchEmbedFormatLabel = document.createElement("label");
+twitchEmbedFormatLabel.innerHTML = "Twitch Embed Formatting";
+twitchEmbedFormatLabel.title = "Select how to format the Twitch embeds";
+twitchEmbedFormatLabel.htmlFor = "embedFormatSelect";
+twitchEmbedFormatGroup.appendChild(twitchEmbedFormatLabel);
+let twitchEmbedFormatSelect = document.createElement("select");
+twitchEmbedFormatSelect.id = "embedFormatSelect";
+twitchEmbedFormatSelect.name = "embedFormatSelect";
+twitchEmbedFormatSelect.className = "form-control";
+
+let twitchEmbedFormatOption1 = document.createElement("option");
+twitchEmbedFormatOption1.value = 1;
+twitchEmbedFormatOption1.innerHTML = "#twitch/xqcow";
+twitchEmbedFormatSelect.appendChild(twitchEmbedFormatOption1);
+
+let twitchEmbedFormatOption2 = document.createElement("option");
+twitchEmbedFormatOption2.value = 2;
+twitchEmbedFormatOption2.innerHTML =
+  "#twitch/xqcow (BEST ONE ONLY TOP CRAZED ALWAYS TODAY OK MAYBE YES RIGHT NOW...)";
+twitchEmbedFormatSelect.appendChild(twitchEmbedFormatOption2);
+
+twitchEmbedFormatSelect.value = twitchEmbedFormat;
+twitchEmbedFormatSelect.addEventListener("change", () => {
+  twitchEmbedFormat = parseInt(twitchEmbedFormatSelect.value);
+  window.localStorage.setItem(
+    "vyneer-util.twitchEmbedFormat",
+    twitchEmbedFormatSelect.value
+  );
+});
+
+twitchEmbedFormatGroup.appendChild(twitchEmbedFormatSelect);
+
+// creating an yt embed formatting setting
+let youtubeEmbedFormatGroup = document.createElement("div");
+youtubeEmbedFormatGroup.className = "form-group";
+let youtubeEmbedFormatLabel = document.createElement("label");
+youtubeEmbedFormatLabel.innerHTML = "YouTube Embed Formatting";
+youtubeEmbedFormatLabel.title = "Select how to format the YouTube embeds";
+youtubeEmbedFormatLabel.htmlFor = "embedFormatSelect";
+youtubeEmbedFormatGroup.appendChild(youtubeEmbedFormatLabel);
+let youtubeEmbedFormatSelect = document.createElement("select");
+youtubeEmbedFormatSelect.id = "embedFormatSelect";
+youtubeEmbedFormatSelect.name = "embedFormatSelect";
+youtubeEmbedFormatSelect.className = "form-control";
+
+let youtubeEmbedFormatOption1 = document.createElement("option");
+youtubeEmbedFormatOption1.value = 1;
+youtubeEmbedFormatOption1.innerHTML = "#youtube/dQw4w9WgXcQ";
+youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption1);
+
+let youtubeEmbedFormatOption2 = document.createElement("option");
+youtubeEmbedFormatOption2.value = 2;
+youtubeEmbedFormatOption2.innerHTML = "#youtube/dQw4w9WgXcQ (Rick Astley)";
+youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption2);
+
+let youtubeEmbedFormatOption3 = document.createElement("option");
+youtubeEmbedFormatOption3.value = 3;
+youtubeEmbedFormatOption3.innerHTML =
+  "#youtube/dQw4w9WgXcQ (Rick Astley - Never Gonna Give You Up (Official Music Video))";
+youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption3);
+
+let youtubeEmbedFormatOption4 = document.createElement("option");
+youtubeEmbedFormatOption4.value = 4;
+youtubeEmbedFormatOption4.innerHTML = "#youtube/Rick Astley";
+youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption4);
+
+let youtubeEmbedFormatOption5 = document.createElement("option");
+youtubeEmbedFormatOption5.value = 5;
+youtubeEmbedFormatOption5.innerHTML =
+  "#youtube/Rick Astley - Never Gonna Give You Up (Official Music Video)";
+youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption5);
+
+youtubeEmbedFormatSelect.value = youtubeEmbedFormat;
+youtubeEmbedFormatSelect.addEventListener("change", () => {
+  youtubeEmbedFormat = parseInt(youtubeEmbedFormatSelect.value);
+  window.localStorage.setItem(
+    "vyneer-util.youtubeEmbedFormat",
+    youtubeEmbedFormatSelect.value
+  );
+});
+
+youtubeEmbedFormatGroup.appendChild(youtubeEmbedFormatSelect);
 
 // creating an phrase textarea color setting
 let phraseColorGroup = document.createElement("div");
@@ -410,10 +534,19 @@ customColorArea.addEventListener("change", () => {
 customColorGroup.appendChild(customColorArea);
 
 // appending all the settings to our area
+settingsArea.appendChild(alwaysScrollDownGroup);
+let embedsTitle = document.createElement("h4");
+embedsTitle.innerHTML = "Utilities Embeds Settings";
+settingsArea.appendChild(embedsTitle);
 settingsArea.appendChild(embedsOnLaunchGroup);
 settingsArea.appendChild(lastEmbedsGroup);
 settingsArea.appendChild(lastIfNoneGroup);
 settingsArea.appendChild(embedTimeGroup);
+settingsArea.appendChild(twitchEmbedFormatGroup);
+settingsArea.appendChild(youtubeEmbedFormatGroup);
+let phrasesTitle = document.createElement("h4");
+phrasesTitle.innerHTML = "Utilities Phrases Settings";
+settingsArea.appendChild(phrasesTitle);
 settingsArea.appendChild(phraseColorGroup);
 settingsArea.appendChild(nukeColorGroup);
 settingsArea.appendChild(customPhrasesGroup);
@@ -422,6 +555,21 @@ settingsArea.appendChild(customColorGroup);
 // small function to escape icky characters
 function escapeRegex(string) {
   return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+}
+
+// https://www.npmjs.com/package/text-ellipsis
+// cut off a string if too long
+function textEllipsis(str, maxLength, { side = "end", ellipsis = "..." } = {}) {
+  if (str.length > maxLength) {
+    switch (side) {
+      case "start":
+        return ellipsis + str.slice(-(maxLength - ellipsis.length));
+      case "end":
+      default:
+        return str.slice(0, maxLength - ellipsis.length) + ellipsis;
+    }
+  }
+  return str;
 }
 
 // formatter for embed links
@@ -449,22 +597,123 @@ class EmbedUrlFormatter {
     }
   }
 
-  format(str) {
+  format(str, channel, title) {
     // Open embed links in a new tab when in embedded/popout chat.
     const target = this.currentPath === this.bigscreenPath ? "_top" : "_blank";
+    title = textEllipsis(title, 60);
     let source;
+    let replacerString =
+      '$1<a class="externallink bookmarklink" href="' +
+      this.url +
+      '$2" target="' +
+      target +
+      '">$2</a> <a class="externallink bookmarklink" href="' +
+      source +
+      '" target ="_blank">(source)</a>';
     switch (str.replace(this.bigscreenregex, "$3")) {
       case "#twitch":
         source = "https://twitch.tv/" + str.split("/")[1];
+        switch (twitchEmbedFormat) {
+          case 2:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2 (' +
+              title +
+              ')</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+        }
         break;
       case "#twitch-vod":
         source = "https://twitch.tv/videos/" + str.split("/")[1];
+        switch (twitchEmbedFormat) {
+          case 2:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2 (' +
+              title +
+              ')</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+        }
         break;
       case "#twitch-clip":
         source = "https://clips.twitch.tv/" + str.split("/")[1];
+        switch (twitchEmbedFormat) {
+          case 2:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2 (' +
+              title +
+              ')</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+        }
         break;
       case "#youtube":
         source = "https://youtu.be/" + str.split("/")[1];
+        switch (youtubeEmbedFormat) {
+          case 2:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2 (' +
+              channel +
+              ')</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+          case 3:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2 (' +
+              title +
+              ')</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+          case 4:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$3/' +
+              channel +
+              '</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+          case 5:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$3/' +
+              title +
+              '</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+        }
         break;
       case "strims.gg/angelthump":
         return str.replace(
@@ -472,16 +721,7 @@ class EmbedUrlFormatter {
           '$1<a class="externallink bookmarklink" href="https://$2" target="_blank">$2</a>'
         );
     }
-    return str.replace(
-      this.bigscreenregex,
-      '$1<a class="externallink bookmarklink" href="' +
-        this.url +
-        '$2" target="' +
-        target +
-        '">$2</a> <a class="externallink bookmarklink" href="' +
-        source +
-        '" target ="_blank">(source)</a>'
-    );
+    return str.replace(this.bigscreenregex, replacerString);
   }
 }
 
@@ -596,21 +836,29 @@ function serveEmbeds(data, emb, ifnone) {
     data.forEach((entry) => {
       if (!emb) {
         new DGGMsg(
-          `${embedForm.format(entry.link)} (${entry.count} ${
-            entry.count == 1 ? "embed" : "embeds"
-          })`,
+          `${embedForm.format(entry.link, entry.channel, entry.title)} (${
+            entry.count
+          } ${entry.count == 1 ? "embed" : "embeds"})`,
           "msg-status msg-historical",
           ""
         );
       } else {
         new DGGMsg(
-          embedForm.format(entry.link),
+          embedForm.format(entry.link, entry.channel, entry.title),
           "msg-status msg-historical",
           entry.timestamp
         );
       }
 
-      chatlines.scrollTop = chatlines.scrollHeight;
+      if (alwaysScrollDown) {
+        chatlines.scrollTop = chatlines.scrollHeight;
+      } else {
+        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+          chatlines.scrollTop = chatlines.scrollHeight;
+        } else {
+          chatlines.scrollLeft = chatlines.scrollWidth;
+        }
+      }
     });
   } else {
     if (!emb) {
@@ -644,7 +892,16 @@ function serveEmbeds(data, emb, ifnone) {
         ""
       );
     }
-    chatlines.scrollTop = chatlines.scrollHeight;
+
+    if (alwaysScrollDown) {
+      chatlines.scrollTop = chatlines.scrollHeight;
+    } else {
+      if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+        chatlines.scrollTop = chatlines.scrollHeight;
+      } else {
+        chatlines.scrollLeft = chatlines.scrollWidth;
+      }
+    }
   }
 }
 
@@ -670,7 +927,15 @@ function embeds() {
     embedUrl = `https://vyneer.me/tools/embeds/last`;
   }
 
-  chatlines.scrollTop = chatlines.scrollHeight;
+  if (alwaysScrollDown) {
+    chatlines.scrollTop = chatlines.scrollHeight;
+  } else {
+    if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+      chatlines.scrollTop = chatlines.scrollHeight;
+    } else {
+      chatlines.scrollLeft = chatlines.scrollWidth;
+    }
+  }
 
   GM.xmlHttpRequest({
     url: embedUrl,
@@ -698,23 +963,37 @@ function getNukesAndLinks() {
             duration: "10m",
             word: "test",
           },
+          {
+            time: "2020-03-20T14:28:23.382748",
+            type: "meganuke",
+            duration: "10m",
+            word: "test2",
+          },
         ];
       }
       nukes = [];
       if (response.status == 200) {
         if (data.length > 0) {
+          let nukeAlertButtonTooltip = "";
+          data.forEach((entry) => {
+            nukeAlertButtonTooltip += `${entry.word} (${entry.type} for ${entry.duration})\n`;
+            nukes.push(entry);
+          });
           nukeAlertButton.style.display = "";
+          if (nukeAlertButtonTooltip) {
+            nukeAlertButton.title = nukeAlertButtonTooltip;
+          } else {
+            nukeAlertButton.title = "Nukes";
+          }
         } else {
           if (nukeAlertButton.style.display != "none") {
             nukeAlertButton.style.display = "none";
+            nukeAlertButton.title = "Nukes";
             if (DEBUG) {
               nukeAlertButton.style.display = "";
             }
           }
         }
-        data.forEach((entry) => {
-          nukes.push(entry);
-        });
       } else {
         console.log(`dgg-utils error, can't get nukes - ${response.status}`);
       }
@@ -770,7 +1049,15 @@ marginObserver.observe(
 nukeAlertButton.addEventListener("click", () => {
   new DGGMsg(`Showing current nukes...`, "msg-info", "");
 
-  chatlines.scrollTop = chatlines.scrollHeight;
+  if (alwaysScrollDown) {
+    chatlines.scrollTop = chatlines.scrollHeight;
+  } else {
+    if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+      chatlines.scrollTop = chatlines.scrollHeight;
+    } else {
+      chatlines.scrollLeft = chatlines.scrollWidth;
+    }
+  }
 
   if (nukes.length > 0) {
     nukes.forEach((result) => {
@@ -781,7 +1068,15 @@ nukeAlertButton.addEventListener("click", () => {
         "msg-status msg-historical",
         ""
       );
-      chatlines.scrollTop = chatlines.scrollHeight;
+      if (alwaysScrollDown) {
+        chatlines.scrollTop = chatlines.scrollHeight;
+      } else {
+        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+          chatlines.scrollTop = chatlines.scrollHeight;
+        } else {
+          chatlines.scrollLeft = chatlines.scrollWidth;
+        }
+      }
     });
   } else {
     new DGGMsg(
@@ -789,6 +1084,14 @@ nukeAlertButton.addEventListener("click", () => {
       "msg-status msg-error",
       ""
     );
-    chatlines.scrollTop = chatlines.scrollHeight;
+    if (alwaysScrollDown) {
+      chatlines.scrollTop = chatlines.scrollHeight;
+    } else {
+      if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+        chatlines.scrollTop = chatlines.scrollHeight;
+      } else {
+        chatlines.scrollLeft = chatlines.scrollWidth;
+      }
+    }
   }
 });
