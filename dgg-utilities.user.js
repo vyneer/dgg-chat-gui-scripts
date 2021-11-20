@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.5
+// @version      1.5.1
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -12,6 +12,8 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.5.1 - 2021-11-20
+// * fix (source) links not working in some cases
 // v1.5 - 2021-11-19
 // * add an option to disable autoscroll down (so, when the "More messages below" bar appears, it won't scroll down if you uncheck the setting)
 // * add an option to see title/channel name of youtube embeds
@@ -26,9 +28,6 @@
 // * better update system (you can just left click now pog) (technically a server side change)
 // v1.3.2 - 2021-08-30
 // * fix phrases autorefresh not clearing the array
-// v1.3.1 - 2021-08-29
-// * phrases autorefresh now too
-// * add an icon :)
 
 // set to true if you wanna see nuke/mutelinks buttons all the time
 const DEBUG = false;
@@ -602,14 +601,7 @@ class EmbedUrlFormatter {
     const target = this.currentPath === this.bigscreenPath ? "_top" : "_blank";
     title = textEllipsis(title, 60);
     let source;
-    let replacerString =
-      '$1<a class="externallink bookmarklink" href="' +
-      this.url +
-      '$2" target="' +
-      target +
-      '">$2</a> <a class="externallink bookmarklink" href="' +
-      source +
-      '" target ="_blank">(source)</a>';
+    let replacerString;
     switch (str.replace(this.bigscreenregex, "$3")) {
       case "#twitch":
         source = "https://twitch.tv/" + str.split("/")[1];
@@ -623,6 +615,16 @@ class EmbedUrlFormatter {
               '">$2 (' +
               title +
               ')</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+          default:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2</a> <a class="externallink bookmarklink" href="' +
               source +
               '" target ="_blank">(source)</a>';
             break;
@@ -643,6 +645,16 @@ class EmbedUrlFormatter {
               source +
               '" target ="_blank">(source)</a>';
             break;
+          default:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
         }
         break;
       case "#twitch-clip":
@@ -657,6 +669,16 @@ class EmbedUrlFormatter {
               '">$2 (' +
               title +
               ')</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+          default:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2</a> <a class="externallink bookmarklink" href="' +
               source +
               '" target ="_blank">(source)</a>';
             break;
@@ -710,6 +732,16 @@ class EmbedUrlFormatter {
               '">$3/' +
               title +
               '</a> <a class="externallink bookmarklink" href="' +
+              source +
+              '" target ="_blank">(source)</a>';
+            break;
+          default:
+            replacerString =
+              '$1<a class="externallink bookmarklink" href="' +
+              this.url +
+              '$2" target="' +
+              target +
+              '">$2</a> <a class="externallink bookmarklink" href="' +
               source +
               '" target ="_blank">(source)</a>';
             break;
