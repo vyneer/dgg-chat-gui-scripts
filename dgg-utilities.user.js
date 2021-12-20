@@ -171,7 +171,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // we check the difference between the current install's version and the API
             // if the API shows there's an update, show a message
             GM.xmlHttpRequest({
-              url: "https://vyneer.me/tools/script",
+              url: "https://vyneer.me/tools/script/dev",
               onload: (response) => {
                 let data = JSON.parse(response.response);
                 if ("link" in data && "version" in data) {
