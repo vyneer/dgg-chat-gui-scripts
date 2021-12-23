@@ -18,7 +18,7 @@
 // v1.6
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
-// * another embed icon change, thank you Igor <3
+// * add an option to select the embed button icon (thanks Igor for the outline version, thanks Voiture for the SVG version! <3)
 // * firemonkey compatibility
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
@@ -67,6 +67,9 @@ let alwaysScrollDown = window.localStorage.getItem(
 )
   ? JSON.parse(window.localStorage.getItem("vyneer-util.alwaysScrollDown"))
   : true;
+let embedIconStyle = window.localStorage.getItem("vyneer-util.embedIconStyle")
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.embedIconStyle"))
+  : 1;
 let embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedsOnLaunch"))
   : false;
@@ -245,12 +248,23 @@ document.addEventListener("DOMContentLoaded", function () {
   embedsButton.title = "Embeds";
   let embedsButton_i = document.createElement("i");
   embedsButton_i.className = "btn-icon";
-  embedsButton_i.innerHTML = "🎬";
+  if (embedIconStyle !== 1) {
+    embedsButton_i.innerHTML = "🎬";
+  } else {
+    embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3Csvg viewBox='9 5 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' stroke='white' d='M10,10 l0,-1 l7,-3 l0,1 l-7,3 l0,5 l7,0 l0,-5 l-7,0' /%3E%3C/svg%3E")`;
+  }
   embedsButton_i.style.fontStyle = "normal";
   embedsButton_i.style.fontSize = "larger";
   embedsButton_i.style.textAlign = "center";
-  embedsButton_i.style.color = "transparent";
-  embedsButton_i.style.textShadow = "0 0 white";
+  switch (embedIconStyle) {
+    case 3:
+      embedsButton_i.style.filter = "saturate(0)";
+      break;
+    case 4:
+      embedsButton_i.style.color = "transparent";
+      embedsButton_i.style.textShadow = "0 0 white";
+      break;
+  }
 
   // making a button for the nuke alert
   let chatWhispersArea = document.querySelectorAll(".chat-tools-group")[0];
@@ -342,6 +356,80 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   });
   alwaysScrollDownLabel.prepend(alwaysScrollDownCheck);
+
+  // creating an embed icon selector setting
+  let embedIconStyleGroup = document.createElement("div");
+  embedIconStyleGroup.className = "form-group";
+  let embedIconStyleLabel = document.createElement("label");
+  embedIconStyleLabel.innerHTML = "Embed Button Style";
+  embedIconStyleLabel.title = "Select how the embed button looks";
+  embedIconStyleLabel.htmlFor = "embedIconStyleSelect";
+  embedIconStyleGroup.appendChild(embedIconStyleLabel);
+  let embedIconStyleSelect = document.createElement("select");
+  embedIconStyleSelect.id = "embedIconStyleSelect";
+  embedIconStyleSelect.name = "embedIconStyleSelect";
+  embedIconStyleSelect.className = "form-control";
+
+  let embedIconStyleOption1 = document.createElement("option");
+  embedIconStyleOption1.value = 1;
+  embedIconStyleOption1.innerHTML = "SVG icon";
+  embedIconStyleSelect.appendChild(embedIconStyleOption1);
+
+  let embedIconStyleOption2 = document.createElement("option");
+  embedIconStyleOption2.value = 2;
+  embedIconStyleOption2.innerHTML = "Original movie clapper";
+  embedIconStyleSelect.appendChild(embedIconStyleOption2);
+
+  let embedIconStyleOption3 = document.createElement("option");
+  embedIconStyleOption3.value = 3;
+  embedIconStyleOption3.innerHTML = "Movie clapper with 0 saturation";
+  embedIconStyleSelect.appendChild(embedIconStyleOption3);
+
+  let embedIconStyleOption4 = document.createElement("option");
+  embedIconStyleOption4.value = 4;
+  embedIconStyleOption4.innerHTML = "Movie clapper outline";
+  embedIconStyleSelect.appendChild(embedIconStyleOption4);
+
+  embedIconStyleSelect.value = embedIconStyle;
+  embedIconStyleSelect.addEventListener("change", () => {
+    embedIconStyle = parseInt(embedIconStyleSelect.value);
+    window.localStorage.setItem(
+      "vyneer-util.embedIconStyle",
+      embedIconStyleSelect.value
+    );
+    switch (embedIconStyle) {
+      case 1:
+        embedsButton_i.innerHTML = "";
+        embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3Csvg viewBox='9 5 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' stroke='white' d='M10,10 l0,-1 l7,-3 l0,1 l-7,3 l0,5 l7,0 l0,-5 l-7,0' /%3E%3C/svg%3E")`;
+        break;
+
+      case 2:
+        embedsButton_i.innerHTML = "🎬";
+        embedsButton_i.style.backgroundImage = "none";
+        embedsButton_i.style.filter = "";
+        embedsButton_i.style.color = "";
+        embedsButton_i.style.textShadow = "";
+        break;
+
+      case 3:
+        embedsButton_i.innerHTML = "🎬";
+        embedsButton_i.style.backgroundImage = "";
+        embedsButton_i.style.filter = "saturate(0)";
+        embedsButton_i.style.color = "";
+        embedsButton_i.style.textShadow = "";
+        break;
+
+      case 4:
+        embedsButton_i.innerHTML = "🎬";
+        embedsButton_i.style.backgroundImage = "";
+        embedsButton_i.style.filter = "";
+        embedsButton_i.style.color = "transparent";
+        embedsButton_i.style.textShadow = "0 0 white";
+        break;
+    }
+  });
+
+  embedIconStyleGroup.appendChild(embedIconStyleSelect);
 
   // creating a show embeds on connect setting
   let embedsOnLaunchGroup = document.createElement("div");
@@ -752,6 +840,7 @@ document.addEventListener("DOMContentLoaded", function () {
   settingsArea.appendChild(alwaysScrollDownGroup);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
+  settingsArea.appendChild(embedIconStyleGroup);
   settingsArea.appendChild(embedsTitle);
   settingsArea.appendChild(embedsOnLaunchGroup);
   settingsArea.appendChild(lastEmbedsGroup);
