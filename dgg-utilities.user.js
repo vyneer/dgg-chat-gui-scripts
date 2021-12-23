@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2021.12.20
+// @version      dev-2021.12.23
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -140,7 +140,6 @@ document.head.appendChild(alertAnimationStyle);
 document.addEventListener(
   "keypress",
   function (e) {
-    console.log(e);
     if (e.key === "Enter" && !e.altKey && foundPhraseOrNuke && preventEnter) {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -572,29 +571,28 @@ function injectScript() {
 
   let youtubeEmbedFormatOption1 = document.createElement("option");
   youtubeEmbedFormatOption1.value = 1;
-  youtubeEmbedFormatOption1.innerHTML = "#youtube/dQw4w9WgXcQ";
+  youtubeEmbedFormatOption1.innerHTML = "#youtube/6RQA9GZprqM";
   youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption1);
 
   let youtubeEmbedFormatOption2 = document.createElement("option");
   youtubeEmbedFormatOption2.value = 2;
-  youtubeEmbedFormatOption2.innerHTML = "#youtube/dQw4w9WgXcQ (Rick Astley)";
+  youtubeEmbedFormatOption2.innerHTML = "#youtube/6RQA9GZprqM (Destiny)";
   youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption2);
 
   let youtubeEmbedFormatOption3 = document.createElement("option");
   youtubeEmbedFormatOption3.value = 3;
   youtubeEmbedFormatOption3.innerHTML =
-    "#youtube/dQw4w9WgXcQ (Rick Astley - Never Gonna Give You Up (Official Music Video))";
+    "#youtube/6RQA9GZprqM (Debating JonTron)";
   youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption3);
 
   let youtubeEmbedFormatOption4 = document.createElement("option");
   youtubeEmbedFormatOption4.value = 4;
-  youtubeEmbedFormatOption4.innerHTML = "#youtube/Rick Astley";
+  youtubeEmbedFormatOption4.innerHTML = "#youtube/Destiny";
   youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption4);
 
   let youtubeEmbedFormatOption5 = document.createElement("option");
   youtubeEmbedFormatOption5.value = 5;
-  youtubeEmbedFormatOption5.innerHTML =
-    "#youtube/Rick Astley - Never Gonna Give You Up (Official Music Video)";
+  youtubeEmbedFormatOption5.innerHTML = "#youtube/Debating JonTron";
   youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption5);
 
   youtubeEmbedFormatSelect.value = youtubeEmbedFormat;
