@@ -157,10 +157,10 @@ document.addEventListener(
 );
 
 // firemonkey compatibility stuff pepeW
-if (document.readyState !== 'loading') {
+if (document.readyState !== "loading") {
   injectScript();
 } else {
-  document.addEventListener('DOMContentLoaded', injectScript);
+  document.addEventListener("DOMContentLoaded", injectScript);
 }
 
 function injectScript() {
