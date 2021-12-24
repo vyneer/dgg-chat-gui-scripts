@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2021.12.23
+// @version      dev-2021.12.24
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
-// @run-at       document-body
+// @run-at       document-start
 // @allFrames    true
 // @grant        GM.xmlHttpRequest
 // @connect      vyneer.me
@@ -112,31 +112,6 @@ let preventEnter = window.localStorage.getItem("vyneer-util.preventEnter")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.preventEnter"))
   : false;
 
-var alertAnimationStyle = document.createElement("style");
-var keyFrames = `
-:root {
-  --flashing-color: #1f0000;
-}
-
-@keyframes bannedAlert {
-  0%,
-  50%,
-  100% {
-    background-color: #111;
-  }
-
-  25%,
-  75% {
-    background-color: var(--flashing-color);
-  }
-}
-
-.alertAnim {
-  animation: bannedAlert 1s;
-}`;
-alertAnimationStyle.innerHTML = keyFrames;
-document.head.appendChild(alertAnimationStyle);
-
 document.addEventListener(
   "keypress",
   function (e) {
@@ -166,6 +141,31 @@ function injectScript() {
   let chatlines = document.querySelector(".chat-lines");
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
+
+  let alertAnimationStyle = document.createElement("style");
+  let keyFrames = `
+  :root {
+    --flashing-color: #1f0000;
+  }
+
+  @keyframes bannedAlert {
+    0%,
+    50%,
+    100% {
+      background-color: #111;
+    }
+
+    25%,
+    75% {
+      background-color: var(--flashing-color);
+    }
+  }
+
+  .alertAnim {
+    animation: bannedAlert 1s;
+  }`;
+  alertAnimationStyle.innerHTML = keyFrames;
+  document.head.appendChild(alertAnimationStyle);
 
   // make an observer to show an update message after the "connected" alert in chat
   let updateObserver = new MutationObserver((mutations) => {
