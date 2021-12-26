@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2021.12.24
+// @version      dev-2021.12.25
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -182,6 +182,7 @@ function injectScript() {
             // we check the difference between the current install's version and the API
             // if the API shows there's an update, show a message
             GM.xmlHttpRequest({
+              method: "GET",
               url: "https://vyneer.me/tools/script/dev",
               onload: (response) => {
                 let data = JSON.parse(response.response);
@@ -757,6 +758,7 @@ function injectScript() {
                 switch (platform) {
                   case "#youtube":
                     GM.xmlHttpRequest({
+                      method: "GET",
                       url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${id}`,
                       onload: (response) => {
                         let data = JSON.parse(response.response);
@@ -1114,6 +1116,7 @@ function injectScript() {
   function getPhrases() {
     // download the ban/mute phrases to an array
     GM.xmlHttpRequest({
+      method: "GET",
       url: "https://vyneer.me/tools/phrases",
       onload: (response) => {
         let data = JSON.parse(response.response);
@@ -1254,6 +1257,7 @@ function injectScript() {
             ""
           );
           GM.xmlHttpRequest({
+            method: "GET",
             url: `https://vyneer.me/tools/embeds/last`,
             onload: (response) => {
               let data = JSON.parse(response.response);
@@ -1317,6 +1321,7 @@ function injectScript() {
     }
 
     GM.xmlHttpRequest({
+      method: "GET",
       url: embedUrl,
       onload: (response) => {
         let data = JSON.parse(response.response);
@@ -1331,6 +1336,7 @@ function injectScript() {
   // function to check nukes and mutelinks
   function getNukesAndLinks() {
     GM.xmlHttpRequest({
+      method: "GET",
       url: "https://vyneer.me/tools/nukes",
       onload: (response) => {
         let data = JSON.parse(response.response);
@@ -1367,6 +1373,7 @@ function injectScript() {
     });
 
     GM.xmlHttpRequest({
+      method: "GET",
       url: "https://vyneer.me/tools/mutelinks",
       onload: (response) => {
         let data = JSON.parse(response.response);
