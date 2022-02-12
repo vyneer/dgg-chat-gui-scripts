@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.5.1
+// @version      1.5.2
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -12,6 +12,8 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.5.2 - 2022-02-12
+// * Added setting for hiding individual flairs
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
 // v1.5 - 2021-11-19
@@ -79,6 +81,9 @@ let customPhrases = window.localStorage.getItem("vyneer-util.customPhrases")
 let customColor = window.localStorage.getItem("vyneer-util.customColor")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.customColor"))
   : "1f0000";
+let hiddenFlairs = window.localStorage.getItem("vyneer-util.hiddenFlairs")
+    ? JSON.parse(window.localStorage.getItem("vyneer-util.hiddenFlairs"))
+    : [];
 
 let chatlines = document.querySelector(".chat-lines");
 let textarea = document.querySelector("#chat-input-control");
@@ -126,6 +131,9 @@ let updateObserver = new MutationObserver((mutations) => {
   }
 });
 updateObserver.observe(chatlines, { childList: true });
+
+// Add custom style rules to this
+let customCss = '';
 
 // making a button for embeds
 let chatToolsArea = document.querySelectorAll(".chat-tools-group")[1];
@@ -532,6 +540,130 @@ customColorArea.addEventListener("change", () => {
 });
 customColorGroup.appendChild(customColorArea);
 
+// creating hide invidual flairs setting
+const flairs = getAllFlairIds();
+// TODO: Need a better way to get flairs
+function getAllFlairIds() {
+    const flairIds = [];
+    for(let i = 1; i <= 50; i++) {
+        flairIds.push(`flair${i}`);
+    }
+    return flairIds;
+}
+function removeUnusedFlairs() {
+    const toRemove = [];
+    for(let f of hideFlairsList.children) {
+        if(!getComputedStyle(f).background.includes('flair')) {
+            toRemove.push(f);
+        }
+    }
+    for(let f of toRemove) {
+        f.remove();
+    }
+    hideFlairsList.style.height = `${hideFlairsList.scrollHeight}px`
+}
+function flairToButton(flair) {
+    const isHidden = hiddenFlairs.includes(flair);
+    return `<span class="flair-selector flair ${flair} ${isHidden ? 'hide-flair' : ''}" data-flair-id="${flair}"></span>`;
+}
+function toggleFlair(target) {
+    const hideFlair = target.classList.toggle('hide-flair');
+    const targetFlairId = target.dataset.flairId;
+
+    // Save to config
+    if (hideFlair) {
+        // Add flair to hide list
+        hiddenFlairs = [...hiddenFlairs, targetFlairId];
+    } else {
+        // Remove flair from hide list
+        hiddenFlairs = hiddenFlairs.filter(f => f !== targetFlairId);
+    }
+
+    window.localStorage.setItem('vyneer-util.hiddenFlairs', JSON.stringify(hiddenFlairs));
+
+    // Change CSS to hide chosen flairs
+    addFlairHidingStyles();
+}
+function addFlairHidingStyles() {
+    const styleId = 'vyneer-util-hide-flair-style';
+    let styleElem = document.getElementById(styleId);
+    if (styleElem === null) {
+        styleElem = document.createElement('style');
+        styleElem.id = styleId;
+        document.head.appendChild(styleElem);
+    }
+    styleElem.innerHTML = hiddenFlairs.reduce((prev, curr) => prev + `.msg-chat .flair.${curr} { display: none; }\n`, '');
+}
+const hideFlairsGroup = document.createElement('div');
+hideFlairsGroup.className = 'form-group row';
+const hideFlairsLabel = document.createElement('label');
+hideFlairsLabel.classList.add('hide-flairs-label');
+hideFlairsLabel.innerHTML = 'Hide Individual Flairs';
+hideFlairsLabel.title = 'Select flairs to hide (Click to expand)';
+const hideFlairsList = document.createElement('div');
+hideFlairsList.classList.add('hide-flairs-list');
+hideFlairsList.innerHTML = flairs.reduce((prev, curr) => prev + flairToButton(curr), '');
+hideFlairsList.addEventListener('click', e => {
+    toggleFlair(e.target);
+});
+hideFlairsLabel.addEventListener('click', () => {
+    const expanded = hideFlairsList.classList.toggle('expanded', hideFlairsLabel.classList.toggle('expanded'));
+    if(expanded) {
+        hideFlairsList.scrollIntoView({behavior: 'smooth'});
+    }
+});
+hideFlairsGroup.appendChild(hideFlairsLabel);
+hideFlairsGroup.appendChild(hideFlairsList);
+customCss += `
+    .hide-flairs-label {
+        position: relative;
+        cursor: pointer;
+    }
+    .hide-flairs-label:hover {
+        text-decoration: underline;
+    }
+    .hide-flairs-label::after {
+        content: '›';
+        margin-left: 5px;
+        font-size: 150%;
+        position: absolute;
+        top: -6px;
+        font-weight: bold;
+        transition: transform 100ms ease-in-out;
+    }
+    .hide-flairs-label.expanded::after {
+        transform: translate(2px, 2px) rotate(90deg);
+    }
+    .hide-flairs-list {
+        margin: 0px 10px;
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 4px;
+        transition: transform 200ms ease-in-out;
+        transform-origin: top center;
+    }
+    .hide-flairs-list:not(.expanded) {
+        transform: scaleY(0);
+        height: 0 !important;
+        transition: all 200ms ease-in-out;
+    }
+    .flair-selector {
+        display: inline-block;
+        margin: 2px;
+        cursor: pointer;
+    }
+    .flair-selector:hover {
+        opacity: 0.75;
+    }
+    .flair-selector.hide-flair::after {
+        content: '❌';
+        position: absolute;
+    }
+`;
+addFlairHidingStyles();
+// Wait 2 seconds for CSS to load to test/remove unused flairs
+setTimeout(removeUnusedFlairs, 2000);   // TODO: again, find a better way to get flairs without removing them like this
+
 // appending all the settings to our area
 settingsArea.appendChild(alwaysScrollDownGroup);
 let embedsTitle = document.createElement("h4");
@@ -550,6 +682,14 @@ settingsArea.appendChild(phraseColorGroup);
 settingsArea.appendChild(nukeColorGroup);
 settingsArea.appendChild(customPhrasesGroup);
 settingsArea.appendChild(customColorGroup);
+settingsArea.appendChild(hideFlairsGroup);
+
+
+// Finally, add our custom styles to the document
+const styles = document.createElement('style');
+styles.id = 'vyneer-util-styles'
+styles.innerHTML = customCss;
+document.head.appendChild(styles);
 
 // small function to escape icky characters
 function escapeRegex(string) {
