@@ -21,6 +21,8 @@
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
 // * add an option to select the embed button icon (thanks Igor for the outline version, thanks Voiture for the SVG version! <3)
+// * add an option to color the text area when mutelinks is on
+// * if you hover over the mutelinks icon a popup makes it more clear what's happening
 // * firemonkey compatibility
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
@@ -51,6 +53,11 @@ const DEBUG_NUKE_DATA = [
     type: "meganuke",
     duration: "10m",
     word: "test2",
+  },
+];
+const DEBUG_LINKS_DATA = [
+  {
+    status: "on",
   },
 ];
 
@@ -94,12 +101,20 @@ let youtubeEmbedFormat = window.localStorage.getItem(
 )
   ? JSON.parse(window.localStorage.getItem("vyneer-util.youtubeEmbedFormat"))
   : 1;
+let colorOnMutelinks = window.localStorage.getItem(
+  "vyneer-util.colorOnMutelinks"
+)
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.colorOnMutelinks"))
+  : false;
 let phraseColor = window.localStorage.getItem("vyneer-util.phraseColor")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.phraseColor"))
   : "1f0000";
 let nukeColor = window.localStorage.getItem("vyneer-util.nukeColor")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.nukeColor"))
   : "1f1500";
+let mutelinksColor = window.localStorage.getItem("vyneer-util.mutelinksColor")
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.mutelinksColor"))
+  : "120016";
 let customPhrases = window.localStorage.getItem("vyneer-util.customPhrases")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.customPhrases"))
   : [];
@@ -116,14 +131,13 @@ let preventEnter = window.localStorage.getItem("vyneer-util.preventEnter")
 document.addEventListener(
   "keypress",
   function (e) {
+    let textarea = document.querySelector("#chat-input-control");
     if (e.key === "Enter" && !e.altKey && foundPhraseOrNuke && preventEnter) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      document.querySelector("#chat-input-control").classList.add("alertAnim");
+      textarea.classList.add("alertAnim");
       setTimeout(() => {
-        document
-          .querySelector("#chat-input-control")
-          .classList.remove("alertAnim");
+        textarea.classList.remove("alertAnim");
       }, 1000);
     }
     return false;
@@ -167,6 +181,18 @@ function injectScript() {
   }`;
   alertAnimationStyle.innerHTML = keyFrames;
   document.head.appendChild(alertAnimationStyle);
+
+  let mutelinksColorStyle = document.createElement("style");
+  let colorStyle = `
+  :root {
+    --mutelinks-color: #111;
+  }
+
+  #chat-input-control {
+    background-color: var(--mutelinks-color);
+  }`;
+  mutelinksColorStyle.innerHTML = colorStyle;
+  mutelinksColorStyle.id = "mutelinksColorStyle";
 
   // make an observer to show an update message after the "connected" alert in chat
   let updateObserver = new MutationObserver((mutations) => {
@@ -676,6 +702,67 @@ function injectScript() {
   });
   nukeColorGroup.appendChild(nukeColorArea);
 
+  // creating a setting to prevent enter from working if you have a banned phrase in the message
+  let colorOnMutelinksGroup = document.createElement("div");
+  colorOnMutelinksGroup.className = "form-group checkbox";
+  let colorOnMutelinksLabel = document.createElement("label");
+  colorOnMutelinksLabel.innerHTML = "Color the text area if mutelinks is on";
+  colorOnMutelinksGroup.appendChild(colorOnMutelinksLabel);
+  let colorOnMutelinksCheck = document.createElement("input");
+  colorOnMutelinksCheck.name = "colorOnMutelinks";
+  colorOnMutelinksCheck.type = "checkbox";
+  colorOnMutelinksCheck.checked = colorOnMutelinks;
+  colorOnMutelinksCheck.addEventListener("change", () => {
+    colorOnMutelinks = colorOnMutelinksCheck.checked;
+    window.localStorage.setItem(
+      "vyneer-util.colorOnMutelinks",
+      colorOnMutelinksCheck.checked
+    );
+    if (colorOnMutelinks) {
+      document.head.appendChild(mutelinksColorStyle);
+    } else {
+      document.querySelector("#mutelinksColorStyle").remove();
+    }
+  });
+  if (colorOnMutelinks) {
+    document.head.appendChild(mutelinksColorStyle);
+  }
+  colorOnMutelinksLabel.prepend(colorOnMutelinksCheck);
+
+  // creating an phrase textarea color setting
+  let mutelinksColorGroup = document.createElement("div");
+  mutelinksColorGroup.className = "form-group row";
+  let mutelinksColorLabel = document.createElement("label");
+  mutelinksColorLabel.innerHTML = "Text area color when mutelinks is on";
+  mutelinksColorLabel.title =
+    "The color that text area changes when mutelinks is on";
+  mutelinksColorLabel.style.marginBottom = 0;
+  mutelinksColorGroup.appendChild(mutelinksColorLabel);
+  let mutelinksColorArea = document.createElement("input");
+  mutelinksColorArea.name = "mutelinksColorArea";
+  mutelinksColorArea.type = "text";
+  mutelinksColorArea.className = "form-control";
+  mutelinksColorArea.placeholder = "120016";
+  mutelinksColorArea.value = mutelinksColor;
+  mutelinksColorArea.style.marginLeft = ".6em";
+  mutelinksColorArea.style.width = "60px";
+  mutelinksColorArea.addEventListener("change", () => {
+    if (mutelinksColorArea.value.length > 0) {
+      mutelinksColor = mutelinksColorArea.value;
+      window.localStorage.setItem(
+        "vyneer-util.mutelinksColor",
+        JSON.stringify(mutelinksColorArea.value)
+      );
+    } else {
+      mutelinksColor = "120016";
+      window.localStorage.setItem(
+        "vyneer-util.mutelinksColor",
+        JSON.stringify("120016")
+      );
+    }
+  });
+  mutelinksColorGroup.appendChild(mutelinksColorArea);
+
   // creating a custom phrases setting
   let customPhrasesGroup = document.createElement("div");
   customPhrasesGroup.className = "form-group row";
@@ -860,8 +947,10 @@ function injectScript() {
   let phrasesTitle = document.createElement("h4");
   phrasesTitle.innerHTML = "Utilities Phrases Settings";
   settingsArea.appendChild(phrasesTitle);
+  settingsArea.appendChild(colorOnMutelinksGroup);
   settingsArea.appendChild(phraseColorGroup);
   settingsArea.appendChild(nukeColorGroup);
+  settingsArea.appendChild(mutelinksColorGroup);
   settingsArea.appendChild(customPhrasesGroup);
   settingsArea.appendChild(customColorGroup);
   let experimentalTitle = document.createElement("h4");
@@ -1377,19 +1466,37 @@ function injectScript() {
       url: "https://vyneer.me/tools/mutelinks",
       onload: (response) => {
         let data = JSON.parse(response.response);
+        if (DEBUG) {
+          data = DEBUG_LINKS_DATA;
+        }
         if (response.status == 200) {
           if (data[0].status == "on") {
             linksAlertButton.style.display = "inline-flex";
+            linksAlertButton.title = `Links mentioning ${data[0].user} WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "on";
+            if (colorOnMutelinks) {
+              document.body.style.setProperty(
+                "--mutelinks-color",
+                `#${mutelinksColorArea.value}`
+              );
+            }
           } else if (data[0].status == "all") {
             linksAlertButton.style.display = "inline-flex";
+            linksAlertButton.title = `ANY link WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "all";
+            if (colorOnMutelinks) {
+              document.body.style.setProperty(
+                "--mutelinks-color",
+                `#${mutelinksColorArea.value}`
+              );
+            }
           } else if (data[0].status == "off") {
             if (linksAlertButton.style.display != "none") {
               linksAlertButton.style.display = "none";
-              if (DEBUG) {
-                linksAlertButton.style.display = "inline-flex";
-              }
+              linksAlertButton.title = "Mutelinks";
+            }
+            if (colorOnMutelinks) {
+              document.body.style.setProperty("--mutelinks-color", `#111`);
             }
           }
         } else {
