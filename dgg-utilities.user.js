@@ -25,6 +25,7 @@
 // * if you hover over the mutelinks icon a popup makes it more clear what's happening
 // * add an option to add 'LIVE' to title when watching on bigscreen
 // * firemonkey compatibility
+// * add an option to hide individual flairs
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
 // v1.5 - 2021-11-19
@@ -133,6 +134,9 @@ let editEmbeds = window.localStorage.getItem("vyneer-util.editEmbeds")
 let preventEnter = window.localStorage.getItem("vyneer-util.preventEnter")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.preventEnter"))
   : false;
+let hiddenFlairs = window.localStorage.getItem("vyneer-util.hiddenFlairs")
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.hiddenFlairs"))
+  : [];
 
 document.addEventListener(
   "keypress",
@@ -246,6 +250,9 @@ function injectScript() {
     }
   });
   updateObserver.observe(chatlines, { childList: true });
+
+  // Add custom style rules to this
+  let settingsCss = '';
 
   // making a button for message sending
   let chatToolsArea = document.querySelectorAll(".chat-tools-group")[1];
@@ -1001,12 +1008,134 @@ function injectScript() {
   });
   preventEnterLabel.prepend(preventEnterCheck);
 
+  // creating hide invidual flairs setting
+  const flairs = getAllFlairIds();
+  // creates flair1-flair50
+  function getAllFlairIds() {
+    const flairIds = [];
+    for (let i = 1; i <= 50; i++) {
+      flairIds.push(`flair${i}`);
+    }
+    return flairIds;
+  }
+  // removes any flairs, previously created, that don't have style rules associated with them
+  function removeUnusedFlairs() {
+    const toRemove = [];
+    for (let f of hideFlairsList.children) {
+      if (!getComputedStyle(f).background.includes('flair')) {
+        toRemove.push(f);
+      }
+    }
+    for (let f of toRemove) {
+      f.remove();
+    }
+    hideFlairsList.style.height = `${hideFlairsList.scrollHeight}px`
+  }
+  function flairToButton(flair) {
+    const isHidden = hiddenFlairs.includes(flair);
+    return `<span class="flair-selector flair ${flair} ${isHidden ? 'hide-flair' : ''}" data-flair-id="${flair}"></span>`;
+  }
+  function toggleFlair(target) {
+    const hideFlair = target.classList.toggle('hide-flair');
+    const targetFlairId = target.dataset.flairId;
+    // Save to config
+    if (hideFlair) {
+      // Add flair to hide list
+      hiddenFlairs = [...hiddenFlairs, targetFlairId];
+    } else {
+      // Remove flair from hide list
+      hiddenFlairs = hiddenFlairs.filter(f => f !== targetFlairId);
+    }
+    window.localStorage.setItem('vyneer-util.hiddenFlairs', JSON.stringify(hiddenFlairs));
+    // Change CSS to hide chosen flairs
+    addFlairHidingStyles();
+  }
+  function addFlairHidingStyles() {
+    const styleId = 'vyneer-util-hide-flair-style';
+    let styleElem = document.getElementById(styleId);
+    if (styleElem === null) {
+      styleElem = document.createElement('style');
+      styleElem.id = styleId;
+      document.head.appendChild(styleElem);
+    }
+    styleElem.innerHTML = hiddenFlairs.reduce((prev, curr) => prev + `.msg-chat .flair.${curr} { display: none; }\n`, '');
+  }
+  const hideFlairsGroup = document.createElement('div');
+  hideFlairsGroup.className = 'form-group row';
+  const hideFlairsLabel = document.createElement('label');
+  hideFlairsLabel.classList.add('hide-flairs-label');
+  hideFlairsLabel.innerHTML = 'Hide Individual Flairs';
+  hideFlairsLabel.title = 'Select flairs to hide (Click to expand)';
+  const hideFlairsList = document.createElement('div');
+  hideFlairsList.classList.add('hide-flairs-list');
+  hideFlairsList.innerHTML = flairs.reduce((prev, curr) => prev + flairToButton(curr), '');
+  hideFlairsList.addEventListener('click', e => toggleFlair(e.target));
+  hideFlairsLabel.addEventListener('click', e => hideFlairsList.classList.toggle('expanded', hideFlairsLabel.classList.toggle('expanded')));
+  hideFlairsGroup.appendChild(hideFlairsLabel);
+  hideFlairsGroup.appendChild(hideFlairsList);
+  settingsCss += `
+    .hide-flairs-label {
+      position: relative;
+      cursor: pointer;
+    }
+    .hide-flairs-label:hover {
+      filter: brightness(1.5);
+    }
+    .hide-flairs-label::after {
+      content: '›';
+      margin-left: 5px;
+      font-size: 150%;
+      position: absolute;
+      top: -6px;
+      font-weight: bold;
+      transition: transform 100ms ease-in-out;
+    }
+    .hide-flairs-label.expanded::after {
+      transform: translate(2px, 2px) rotate(90deg);
+    }
+    .hide-flairs-list {
+      margin: 0px 10px;
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+      transition: all 200ms ease-in-out;
+      transform-origin: top center;
+      overflow: hidden;
+    }
+    .hide-flairs-list:not(.expanded) {
+      transform: scaleY(0);
+      height: 0 !important;
+    }
+    .flair-selector {
+      display: inline-block;
+      margin: 2px;
+      cursor: pointer;
+    }
+    .flair-selector:hover {
+      opacity: 0.75;
+    }
+    .flair-selector.hide-flair::after {
+      content: '❌';
+      position: absolute;
+    }
+  `;
+  addFlairHidingStyles();
+  // Wait 2 seconds for CSS to load to test/remove unused flairs
+  setTimeout(removeUnusedFlairs, 2000);   // it would be nice to have a better way to get flairs
+
+  // Add our settings' styles to the document
+  const settingsStyles = document.createElement('style');
+  settingsStyles.id = 'vyneer-util-styles'
+  settingsStyles.innerHTML = settingsCss;
+  document.head.appendChild(settingsStyles);
+  
   // appending all the settings to our area
   settingsArea.appendChild(alwaysScrollDownGroup);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
   settingsArea.appendChild(changeTitleOnLiveGroup);
   settingsArea.appendChild(embedIconStyleGroup);
+  settingsArea.appendChild(hideFlairsGroup);
   settingsArea.appendChild(embedsTitle);
   settingsArea.appendChild(embedsOnLaunchGroup);
   settingsArea.appendChild(lastEmbedsGroup);
