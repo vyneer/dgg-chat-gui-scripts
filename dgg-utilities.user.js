@@ -1127,3 +1127,26 @@ nukeAlertButton.addEventListener("click", () => {
     }
   }
 });
+
+// isUsername checks if the given element is a username element (can be usernames in messages themselves or in the list of current users)
+function isUsername(element) {
+  return element.classList.contains('user') || element.classList.contains('chat-user');
+}
+
+// if a username is double clicked copy it to the chat input
+window.addEventListener('dblclick', (event) => {
+  const target = event.target;
+
+  if (!isUsername(target)) {
+    return;
+  }
+
+  const username = target.text || target.textContent;
+
+  // if the chat input has some text, and the last character isn't already a space
+  if (textarea.value.length > 0 && textarea.value.charAt(textarea.value.length - 1) != ' ') {
+    textarea.value += ' ';
+  }
+
+  textarea.value += `${username} `;
+});
