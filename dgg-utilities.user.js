@@ -45,6 +45,11 @@ let alwaysScrollDown = window.localStorage.getItem(
 )
   ? JSON.parse(window.localStorage.getItem("vyneer-util.alwaysScrollDown"))
   : true;
+let doubleClickCopy = window.localStorage.getItem(
+  "vyneer-util.doubleClickCopy"
+)
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.doubleClickCopy"))
+  : false;
 let embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedsOnLaunch"))
   : false;
@@ -229,6 +234,52 @@ alwaysScrollDownCheck.addEventListener("change", () => {
   );
 });
 alwaysScrollDownLabel.prepend(alwaysScrollDownCheck);
+
+// isUsername checks if the given element is a username element (can be usernames in messages themselves or in the list of current users)
+function isUsername(element) {
+  return element.classList.contains('user') || element.classList.contains('chat-user');
+}
+
+function doubleClickCopyListener(event) {
+  const target = event.target;
+
+  if (!isUsername(target)) {
+    return;
+  }
+
+  const username = target.text || target.textContent;
+
+  // if the chat input has some text, and the last character isn't already a space
+  if (textarea.value.length > 0 && textarea.value.charAt(textarea.value.length - 1) != ' ') {
+    textarea.value += ' ';
+  }
+
+  textarea.value += `${username} `;
+}
+
+// creating a double click to copy setting
+let doubleClickCopyGroup = document.createElement("div");
+doubleClickCopyGroup.className = "form-group checkbox";
+let doubleClickCopyLabel = document.createElement("label");
+doubleClickCopyLabel.innerHTML = "Double click username to append it to chat input";
+doubleClickCopyGroup.appendChild(doubleClickCopyLabel);
+let doubleClickCopyCheck = document.createElement("input");
+doubleClickCopyCheck.name = "doubleClickCopy";
+doubleClickCopyCheck.type = "checkbox";
+doubleClickCopyCheck.checked = doubleClickCopy;
+doubleClickCopyCheck.addEventListener("change", () => {
+  doubleClickCopy = doubleClickCopyCheck.checked;
+  window.localStorage.setItem(
+    "vyneer-util.doubleClickCopy",
+    doubleClickCopyCheck.checked
+  );
+  window.removeEventListener('dblclick', doubleClickCopyListener);
+  if (doubleClickCopy) {
+    // if a username is double clicked copy it to the chat input
+    window.addEventListener('dblclick', doubleClickCopyListener);
+  }
+});
+doubleClickCopyLabel.prepend(doubleClickCopyCheck);
 
 // creating a show embeds on connect setting
 let embedsOnLaunchGroup = document.createElement("div");
@@ -534,6 +585,7 @@ customColorGroup.appendChild(customColorArea);
 
 // appending all the settings to our area
 settingsArea.appendChild(alwaysScrollDownGroup);
+settingsArea.appendChild(doubleClickCopyGroup);
 let embedsTitle = document.createElement("h4");
 embedsTitle.innerHTML = "Utilities Embeds Settings";
 settingsArea.appendChild(embedsTitle);
@@ -1126,27 +1178,4 @@ nukeAlertButton.addEventListener("click", () => {
       }
     }
   }
-});
-
-// isUsername checks if the given element is a username element (can be usernames in messages themselves or in the list of current users)
-function isUsername(element) {
-  return element.classList.contains('user') || element.classList.contains('chat-user');
-}
-
-// if a username is double clicked copy it to the chat input
-window.addEventListener('dblclick', (event) => {
-  const target = event.target;
-
-  if (!isUsername(target)) {
-    return;
-  }
-
-  const username = target.text || target.textContent;
-
-  // if the chat input has some text, and the last character isn't already a space
-  if (textarea.value.length > 0 && textarea.value.charAt(textarea.value.length - 1) != ' ') {
-    textarea.value += ' ';
-  }
-
-  textarea.value += `${username} `;
 });
