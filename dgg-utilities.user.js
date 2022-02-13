@@ -965,11 +965,6 @@ function injectScript() {
   settingsArea.appendChild(preventEnterGroup);
   settingsArea.appendChild(editEmbedsGroup);
 
-  // small function to escape icky characters
-  function escapeRegex(string) {
-    return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-  }
-
   // https://www.npmjs.com/package/text-ellipsis
   // cut off a string if too long
   function textEllipsis(
