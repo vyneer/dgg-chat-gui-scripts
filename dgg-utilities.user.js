@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2021.12.25
+// @version      dev-2022.02.13
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -23,6 +23,7 @@
 // * add an option to select the embed button icon (thanks Igor for the outline version, thanks Voiture for the SVG version! <3)
 // * add an option to color the text area when mutelinks is on
 // * if you hover over the mutelinks icon a popup makes it more clear what's happening
+// * add an option to add 'LIVE' to title when watching on bigscreen
 // * firemonkey compatibility
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
@@ -76,6 +77,11 @@ let alwaysScrollDown = window.localStorage.getItem(
 )
   ? JSON.parse(window.localStorage.getItem("vyneer-util.alwaysScrollDown"))
   : true;
+let changeTitleOnLive = window.localStorage.getItem(
+  "vyneer-util.changeTitleOnLive"
+)
+  ? JSON.parse(window.localStorage.getItem("vyneer-util.changeTitleOnLive"))
+  : false;
 let embedIconStyle = window.localStorage.getItem("vyneer-util.embedIconStyle")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedIconStyle"))
   : 1;
@@ -156,6 +162,9 @@ function injectScript() {
   let chatlines = document.querySelector(".chat-lines");
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
+  let livePill = !window.parent.location.href.includes("embed")
+    ? window.parent.document.querySelector("#host-pill-type")
+    : undefined;
 
   let alertAnimationStyle = document.createElement("style");
   let keyFrames = `
@@ -391,6 +400,66 @@ function injectScript() {
     );
   });
   alwaysScrollDownLabel.prepend(alwaysScrollDownCheck);
+
+  let ogtitle = window.parent.document.title;
+
+  let checkLive = (node) => {
+    if (node.textContent === "LIVE") {
+      if (!window.parent.document.title.includes("LIVE")) {
+        ogtitle = window.parent.document.title;
+      }
+      window.parent.document.title = `LIVE - ${ogtitle}`;
+    } else {
+      window.parent.document.title = ogtitle;
+    }
+  };
+
+  // make an observer that checks for steve going live
+  let liveObserver = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      for (let node of mutation.addedNodes) {
+        if (livePill != undefined) {
+          checkLive(node);
+        }
+      }
+    }
+  });
+
+  // creating a change title on live setting
+  let changeTitleOnLiveGroup = document.createElement("div");
+  changeTitleOnLiveGroup.className = "form-group checkbox";
+  let changeTitleOnLiveLabel = document.createElement("label");
+  changeTitleOnLiveLabel.innerHTML = "Change tab title when Destiny is live";
+  changeTitleOnLiveGroup.appendChild(changeTitleOnLiveLabel);
+  let changeTitleOnLiveCheck = document.createElement("input");
+  changeTitleOnLiveCheck.name = "changeTitleOnLive";
+  changeTitleOnLiveCheck.type = "checkbox";
+  changeTitleOnLiveCheck.checked = changeTitleOnLive;
+  changeTitleOnLiveCheck.addEventListener("change", () => {
+    changeTitleOnLive = changeTitleOnLiveCheck.checked;
+    window.localStorage.setItem(
+      "vyneer-util.changeTitleOnLive",
+      changeTitleOnLiveCheck.checked
+    );
+    if (changeTitleOnLive && livePill != undefined) {
+      liveObserver.observe(livePill, {
+        childList: true,
+      });
+    } else {
+      liveObserver.disconnect();
+    }
+  });
+  if (changeTitleOnLive && livePill != undefined) {
+    liveObserver.observe(livePill, {
+      childList: true,
+    });
+  } else {
+    liveObserver.disconnect();
+  }
+  if (livePill != undefined) {
+    checkLive(livePill);
+  }
+  changeTitleOnLiveLabel.prepend(changeTitleOnLiveCheck);
 
   // creating an embed icon selector setting
   let embedIconStyleGroup = document.createElement("div");
@@ -936,6 +1005,7 @@ function injectScript() {
   settingsArea.appendChild(alwaysScrollDownGroup);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
+  settingsArea.appendChild(changeTitleOnLiveGroup);
   settingsArea.appendChild(embedIconStyleGroup);
   settingsArea.appendChild(embedsTitle);
   settingsArea.appendChild(embedsOnLaunchGroup);
