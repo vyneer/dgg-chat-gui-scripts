@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.02.13
+// @version      dev-2022.02.14
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -25,7 +25,8 @@
 // * if you hover over the mutelinks icon a popup makes it more clear what's happening
 // * add an option to add 'LIVE' to title when watching on bigscreen
 // * firemonkey compatibility
-// * add an option to hide individual flairs
+// * add an option to hide individual flairs (big thanks to Voiture <3)
+// * add an option to double click a username to append it to the input box (big thanks to @mattroseman <3)
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
 // v1.5 - 2021-11-19
