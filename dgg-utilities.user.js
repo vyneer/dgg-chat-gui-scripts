@@ -143,6 +143,9 @@ let preventEnter = window.localStorage.getItem("vyneer-util.preventEnter")
 let hiddenFlairs = window.localStorage.getItem("vyneer-util.hiddenFlairs")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.hiddenFlairs"))
   : [];
+let stickyMentions = window.localStorage.getItem("vyneer-util.stickyMentions")
+? JSON.parse(window.localStorage.getItem("vyneer-util.stickyMentions"))
+: false;
 
 document.addEventListener(
   "keypress",
@@ -1176,6 +1179,38 @@ doubleClickCopyLabel.prepend(doubleClickCopyCheck);
   // Wait 2 seconds for CSS to load to test/remove unused flairs
   setTimeout(removeUnusedFlairs, 2000);   // it would be nice to have a better way to get flairs
 
+  // creating a setting to toggle mentioned being stuck to top of window when scrolled past
+  const stickyMentionsGroup = document.createElement('div');
+  stickyMentionsGroup.className = "form-group checkbox";
+  const stickyMentionsLabel = document.createElement("label");
+  stickyMentionsLabel.innerHTML = "Stick recent mentions to top of chat";
+  stickyMentionsLabel.title = "Keeps recent mentions stuck to top of chat when scrolled past";
+  stickyMentionsGroup.appendChild(stickyMentionsLabel);
+  const stickyMentionsCheck = document.createElement("input");
+  stickyMentionsCheck.name = "stickyMentions";
+  stickyMentionsCheck.type = "checkbox";
+  stickyMentionsCheck.checked = stickyMentions;
+  function toggleStickyMentions(toggle) {
+    document.getElementById('chat-win-main').classList.toggle('vyneer-util-sticky-mentions-on', toggle);
+  }
+  stickyMentionsCheck.addEventListener("change", () => {
+    stickyMentions = stickyMentionsCheck.checked;
+    window.localStorage.setItem(
+      "vyneer-util.stickyMentions",
+      stickyMentionsCheck.checked
+    );
+    toggleStickyMentions(stickyMentions);
+  });
+  stickyMentionsLabel.prepend(stickyMentionsCheck);
+  settingsCss += `
+    #chat-win-main.vyneer-util-sticky-mentions-on .msg-highlight {
+      position: sticky;
+      top: 0px;
+      z-index: 121;
+    }
+  `;
+  toggleStickyMentions(stickyMentions);
+
   // Add our settings' styles to the document
   const settingsStyles = document.createElement('style');
   settingsStyles.id = 'vyneer-util-styles'
@@ -1188,6 +1223,7 @@ doubleClickCopyLabel.prepend(doubleClickCopyCheck);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
   settingsArea.appendChild(changeTitleOnLiveGroup);
+  settingsArea.appendChild(stickyMentionsGroup);
   settingsArea.appendChild(embedIconStyleGroup);
   settingsArea.appendChild(hideFlairsGroup);
   settingsArea.appendChild(embedsTitle);
