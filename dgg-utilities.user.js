@@ -87,9 +87,7 @@ let changeTitleOnLive = window.localStorage.getItem(
 let embedIconStyle = window.localStorage.getItem("vyneer-util.embedIconStyle")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.embedIconStyle"))
   : 1;
-let doubleClickCopy = window.localStorage.getItem(
-  "vyneer-util.doubleClickCopy"
-)
+let doubleClickCopy = window.localStorage.getItem("vyneer-util.doubleClickCopy")
   ? JSON.parse(window.localStorage.getItem("vyneer-util.doubleClickCopy"))
   : false;
 let embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
@@ -258,7 +256,7 @@ function injectScript() {
   updateObserver.observe(chatlines, { childList: true });
 
   // Add custom style rules to this
-  let settingsCss = '';
+  let settingsCss = "";
 
   // making a button for message sending
   let chatToolsArea = document.querySelectorAll(".chat-tools-group")[1];
@@ -297,53 +295,6 @@ function injectScript() {
       })
     );
   });
-
-// isUsername checks if the given element is a username element (can be usernames in messages themselves or in the list of current users)
-function isUsername(element) {
-  return element.classList.contains('user') || element.classList.contains('chat-user');
-}
-
-function doubleClickCopyListener(event) {
-  const target = event.target;
-
-  if (!isUsername(target)) {
-    return;
-  }
-
-  const username = target.text || target.textContent;
-
-  // if the chat input has some text, and the last character isn't already a space
-  if (textarea.value.length > 0 && textarea.value.charAt(textarea.value.length - 1) != ' ') {
-    textarea.value += ' ';
-  }
-
-  textarea.value += `${username} `;
-}
-
-// creating a double click to copy setting
-let doubleClickCopyGroup = document.createElement("div");
-doubleClickCopyGroup.className = "form-group checkbox";
-let doubleClickCopyLabel = document.createElement("label");
-doubleClickCopyLabel.innerHTML = "Double click username to append it to chat input";
-doubleClickCopyGroup.appendChild(doubleClickCopyLabel);
-let doubleClickCopyCheck = document.createElement("input");
-doubleClickCopyCheck.name = "doubleClickCopy";
-doubleClickCopyCheck.type = "checkbox";
-doubleClickCopyCheck.checked = doubleClickCopy;
-doubleClickCopyCheck.addEventListener("change", () => {
-  doubleClickCopy = doubleClickCopyCheck.checked;
-  window.localStorage.setItem(
-    "vyneer-util.doubleClickCopy",
-    doubleClickCopyCheck.checked
-  );
-  window.removeEventListener('dblclick', doubleClickCopyListener);
-  if (doubleClickCopy) {
-    // if a username is double clicked copy it to the chat input
-    window.addEventListener('dblclick', doubleClickCopyListener);
-  }
-});
-doubleClickCopyLabel.prepend(doubleClickCopyCheck);
-
 
   // making a button for embeds
   let embedsButton = document.createElement("a");
@@ -461,6 +412,63 @@ doubleClickCopyLabel.prepend(doubleClickCopyCheck);
   });
   alwaysScrollDownLabel.prepend(alwaysScrollDownCheck);
 
+  // isUsername checks if the given element is a username element (can be usernames in messages themselves or in the list of current users)
+  function isUsername(element) {
+    return (
+      element.classList.contains("user") ||
+      element.classList.contains("chat-user")
+    );
+  }
+
+  function doubleClickCopyListener(event) {
+    const target = event.target;
+
+    if (!isUsername(target)) {
+      return;
+    }
+
+    const username = target.text || target.textContent;
+
+    // if the chat input has some text, and the last character isn't already a space
+    if (
+      textarea.value.length > 0 &&
+      textarea.value.charAt(textarea.value.length - 1) != " "
+    ) {
+      textarea.value += " ";
+    }
+
+    textarea.value += `${username} `;
+  }
+
+  // creating a double click to copy setting
+  let doubleClickCopyGroup = document.createElement("div");
+  doubleClickCopyGroup.className = "form-group checkbox";
+  let doubleClickCopyLabel = document.createElement("label");
+  doubleClickCopyLabel.innerHTML =
+    "Double click username to append it to chat input";
+  doubleClickCopyGroup.appendChild(doubleClickCopyLabel);
+  let doubleClickCopyCheck = document.createElement("input");
+  doubleClickCopyCheck.name = "doubleClickCopy";
+  doubleClickCopyCheck.type = "checkbox";
+  doubleClickCopyCheck.checked = doubleClickCopy;
+  doubleClickCopyCheck.addEventListener("change", () => {
+    doubleClickCopy = doubleClickCopyCheck.checked;
+    window.localStorage.setItem(
+      "vyneer-util.doubleClickCopy",
+      doubleClickCopyCheck.checked
+    );
+    window.removeEventListener("dblclick", doubleClickCopyListener);
+    if (doubleClickCopy) {
+      // if a username is double clicked copy it to the chat input
+      window.addEventListener("dblclick", doubleClickCopyListener);
+    }
+  });
+  if (doubleClickCopy) {
+    // if a username is double clicked copy it to the chat input
+    window.addEventListener("dblclick", doubleClickCopyListener);
+  }
+  doubleClickCopyLabel.prepend(doubleClickCopyCheck);
+
   let ogtitle = window.parent.document.title;
 
   let checkLive = (node) => {
@@ -516,7 +524,7 @@ doubleClickCopyLabel.prepend(doubleClickCopyCheck);
   } else {
     liveObserver.disconnect();
   }
-  if (livePill != undefined) {
+  if (changeTitleOnLive && livePill != undefined) {
     checkLive(livePill);
   }
   changeTitleOnLiveLabel.prepend(changeTitleOnLiveCheck);
@@ -1075,21 +1083,23 @@ doubleClickCopyLabel.prepend(doubleClickCopyCheck);
   function removeUnusedFlairs() {
     const toRemove = [];
     for (let f of hideFlairsList.children) {
-      if (!getComputedStyle(f).background.includes('flair')) {
+      if (!getComputedStyle(f).background.includes("flair")) {
         toRemove.push(f);
       }
     }
     for (let f of toRemove) {
       f.remove();
     }
-    hideFlairsList.style.height = `${hideFlairsList.scrollHeight}px`
+    hideFlairsList.style.height = `${hideFlairsList.scrollHeight}px`;
   }
   function flairToButton(flair) {
     const isHidden = hiddenFlairs.includes(flair);
-    return `<span class="flair-selector flair ${flair} ${isHidden ? 'hide-flair' : ''}" data-flair-id="${flair}"></span>`;
+    return `<span class="flair-selector flair ${flair} ${
+      isHidden ? "hide-flair" : ""
+    }" data-flair-id="${flair}"></span>`;
   }
   function toggleFlair(target) {
-    const hideFlair = target.classList.toggle('hide-flair');
+    const hideFlair = target.classList.toggle("hide-flair");
     const targetFlairId = target.dataset.flairId;
     // Save to config
     if (hideFlair) {
@@ -1097,33 +1107,47 @@ doubleClickCopyLabel.prepend(doubleClickCopyCheck);
       hiddenFlairs = [...hiddenFlairs, targetFlairId];
     } else {
       // Remove flair from hide list
-      hiddenFlairs = hiddenFlairs.filter(f => f !== targetFlairId);
+      hiddenFlairs = hiddenFlairs.filter((f) => f !== targetFlairId);
     }
-    window.localStorage.setItem('vyneer-util.hiddenFlairs', JSON.stringify(hiddenFlairs));
+    window.localStorage.setItem(
+      "vyneer-util.hiddenFlairs",
+      JSON.stringify(hiddenFlairs)
+    );
     // Change CSS to hide chosen flairs
     addFlairHidingStyles();
   }
   function addFlairHidingStyles() {
-    const styleId = 'vyneer-util-hide-flair-style';
+    const styleId = "vyneer-util-hide-flair-style";
     let styleElem = document.getElementById(styleId);
     if (styleElem === null) {
-      styleElem = document.createElement('style');
+      styleElem = document.createElement("style");
       styleElem.id = styleId;
       document.head.appendChild(styleElem);
     }
-    styleElem.innerHTML = hiddenFlairs.reduce((prev, curr) => prev + `.msg-chat .flair.${curr} { display: none; }\n`, '');
+    styleElem.innerHTML = hiddenFlairs.reduce(
+      (prev, curr) => prev + `.msg-chat .flair.${curr} { display: none; }\n`,
+      ""
+    );
   }
-  const hideFlairsGroup = document.createElement('div');
-  hideFlairsGroup.className = 'form-group row';
-  const hideFlairsLabel = document.createElement('label');
-  hideFlairsLabel.classList.add('hide-flairs-label');
-  hideFlairsLabel.innerHTML = 'Hide Individual Flairs';
-  hideFlairsLabel.title = 'Select flairs to hide (Click to expand)';
-  const hideFlairsList = document.createElement('div');
-  hideFlairsList.classList.add('hide-flairs-list');
-  hideFlairsList.innerHTML = flairs.reduce((prev, curr) => prev + flairToButton(curr), '');
-  hideFlairsList.addEventListener('click', e => toggleFlair(e.target));
-  hideFlairsLabel.addEventListener('click', e => hideFlairsList.classList.toggle('expanded', hideFlairsLabel.classList.toggle('expanded')));
+  const hideFlairsGroup = document.createElement("div");
+  hideFlairsGroup.className = "form-group row";
+  const hideFlairsLabel = document.createElement("label");
+  hideFlairsLabel.classList.add("hide-flairs-label");
+  hideFlairsLabel.innerHTML = "Hide Individual Flairs";
+  hideFlairsLabel.title = "Select flairs to hide (Click to expand)";
+  const hideFlairsList = document.createElement("div");
+  hideFlairsList.classList.add("hide-flairs-list");
+  hideFlairsList.innerHTML = flairs.reduce(
+    (prev, curr) => prev + flairToButton(curr),
+    ""
+  );
+  hideFlairsList.addEventListener("click", (e) => toggleFlair(e.target));
+  hideFlairsLabel.addEventListener("click", (e) =>
+    hideFlairsList.classList.toggle(
+      "expanded",
+      hideFlairsLabel.classList.toggle("expanded")
+    )
+  );
   hideFlairsGroup.appendChild(hideFlairsLabel);
   hideFlairsGroup.appendChild(hideFlairsList);
   settingsCss += `
@@ -1174,14 +1198,14 @@ doubleClickCopyLabel.prepend(doubleClickCopyCheck);
   `;
   addFlairHidingStyles();
   // Wait 2 seconds for CSS to load to test/remove unused flairs
-  setTimeout(removeUnusedFlairs, 2000);   // it would be nice to have a better way to get flairs
+  setTimeout(removeUnusedFlairs, 2000); // it would be nice to have a better way to get flairs
 
   // Add our settings' styles to the document
-  const settingsStyles = document.createElement('style');
-  settingsStyles.id = 'vyneer-util-styles'
+  const settingsStyles = document.createElement("style");
+  settingsStyles.id = "vyneer-util-styles";
   settingsStyles.innerHTML = settingsCss;
   document.head.appendChild(settingsStyles);
-  
+
   // appending all the settings to our area
   settingsArea.appendChild(alwaysScrollDownGroup);
   settingsArea.appendChild(doubleClickCopyGroup);
