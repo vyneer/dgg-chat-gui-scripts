@@ -26,6 +26,7 @@
 // * add an option to add 'LIVE' to title when watching on bigscreen
 // * firemonkey compatibility
 // * add an option to hide individual flairs (big thanks to Voiture <3)
+// * add an option to stick recent mentions to top of chat (big PepoTurkey to Voiture gobl)
 // * add an option to double click a username to append it to the input box (big thanks to @mattroseman <3)
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
@@ -74,76 +75,86 @@ let phrases = [];
 let nukes = [];
 let foundPhraseOrNuke = false;
 
-let alwaysScrollDown = window.localStorage.getItem(
-  "vyneer-util.alwaysScrollDown"
-)
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.alwaysScrollDown"))
-  : true;
-let changeTitleOnLive = window.localStorage.getItem(
-  "vyneer-util.changeTitleOnLive"
-)
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.changeTitleOnLive"))
-  : false;
-let embedIconStyle = window.localStorage.getItem("vyneer-util.embedIconStyle")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.embedIconStyle"))
-  : 1;
-let doubleClickCopy = window.localStorage.getItem("vyneer-util.doubleClickCopy")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.doubleClickCopy"))
-  : false;
-let embedsOnLaunch = window.localStorage.getItem("vyneer-util.embedsOnLaunch")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.embedsOnLaunch"))
-  : false;
-let lastEmbeds = window.localStorage.getItem("vyneer-util.lastEmbeds")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.lastEmbeds"))
-  : false;
-let lastIfNone = window.localStorage.getItem("vyneer-util.lastIfNone")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.lastIfNone"))
-  : false;
-let embedTime = window.localStorage.getItem("vyneer-util.embedTime")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.embedTime"))
-  : 30;
-let twitchEmbedFormat = window.localStorage.getItem(
-  "vyneer-util.twitchEmbedFormat"
-)
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.twitchEmbedFormat"))
-  : 1;
-let youtubeEmbedFormat = window.localStorage.getItem(
-  "vyneer-util.youtubeEmbedFormat"
-)
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.youtubeEmbedFormat"))
-  : 1;
-let colorOnMutelinks = window.localStorage.getItem(
-  "vyneer-util.colorOnMutelinks"
-)
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.colorOnMutelinks"))
-  : false;
-let phraseColor = window.localStorage.getItem("vyneer-util.phraseColor")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.phraseColor"))
-  : "1f0000";
-let nukeColor = window.localStorage.getItem("vyneer-util.nukeColor")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.nukeColor"))
-  : "1f1500";
-let mutelinksColor = window.localStorage.getItem("vyneer-util.mutelinksColor")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.mutelinksColor"))
-  : "120016";
-let customPhrases = window.localStorage.getItem("vyneer-util.customPhrases")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.customPhrases"))
-  : [];
-let customColor = window.localStorage.getItem("vyneer-util.customColor")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.customColor"))
-  : "1f0000";
-let editEmbeds = window.localStorage.getItem("vyneer-util.editEmbeds")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.editEmbeds"))
-  : false;
-let preventEnter = window.localStorage.getItem("vyneer-util.preventEnter")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.preventEnter"))
-  : false;
-let hiddenFlairs = window.localStorage.getItem("vyneer-util.hiddenFlairs")
-  ? JSON.parse(window.localStorage.getItem("vyneer-util.hiddenFlairs"))
-  : [];
-let stickyMentions = window.localStorage.getItem("vyneer-util.stickyMentions")
-? JSON.parse(window.localStorage.getItem("vyneer-util.stickyMentions"))
-: false;
+class ConfigItem {
+  constructor(keyName, defaultValue) {
+    this.keyName = keyName;
+    this.defaultValue = defaultValue;
+  }
+}
+const configItems = {
+  alwaysScrollDown  : new ConfigItem("alwaysScrollDown",   true    ),
+  changeTitleOnLive : new ConfigItem("changeTitleOnLive",  false   ),
+  embedIconStyle    : new ConfigItem("embedIconStyle",     1       ),
+  doubleClickCopy   : new ConfigItem("doubleClickCopy",    false   ),
+  embedsOnLaunch    : new ConfigItem("embedsOnLaunch",     false   ),
+  lastEmbeds        : new ConfigItem("lastEmbeds",         false   ),
+  lastIfNone        : new ConfigItem("lastIfNone",         false   ),
+  embedTime         : new ConfigItem("embedTime",          30      ),
+  twitchEmbedFormat : new ConfigItem("twitchEmbedFormat",  1       ),
+  youtubeEmbedFormat: new ConfigItem("youtubeEmbedFormat", 1       ),
+  colorOnMutelinks  : new ConfigItem("colorOnMutelinks",   false   ),
+  phraseColor       : new ConfigItem("phraseColor",        "1f0000"),
+  nukeColor         : new ConfigItem("nukeColor",          "1f1500"),
+  mutelinksColor    : new ConfigItem("mutelinksColor",     "120016"),
+  customPhrases     : new ConfigItem("customPhrases",      []      ),
+  customColor       : new ConfigItem("customColor",        "1f0000"),
+  editEmbeds        : new ConfigItem("editEmbeds",         false   ),
+  preventEnter      : new ConfigItem("preventEnter",       false   ),
+  hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
+  stickyMentions    : new ConfigItem("stickyMentions",     false   ),
+};
+class Config {
+  #configItems;
+  #configKeyPrefix;
+  constructor(configKeys, keyPrefix) {
+    this.#configItems = configKeys;
+    this.#configKeyPrefix = keyPrefix;
+    // Creates setter funcs in this object (config)
+    // So when the config.key value is changed it is also saved in localStorage
+    for (const key in this.#configItems) {
+      const configKey = this.#configItems[key];
+      const keyName = configKey.keyName;
+      const privateKeyName = `#${keyName}`;
+      Object.defineProperty(this, key, {
+        set: function (value) {
+          // Set the private value
+          this[privateKeyName] = value;
+          // Persist it as well
+          this.#set(keyName, value);
+        },
+        get: function () {
+          // Check if value is saved in config object
+          if (this[privateKeyName] === undefined) {
+            // If not, load it from persistent storage, or use default value
+            this[privateKeyName] = this.#get(keyName, configKey.defaultValue);
+          }
+          return this[privateKeyName];
+        },
+      });
+    }
+  }
+  #getFullKeyName(configKey) {
+    return `${this.#configKeyPrefix}${configKey}`;
+  }
+  #get(configKey, defaultValue) {
+    // Get the value we persisted, in localStorage
+    const fullKeyName = this.#getFullKeyName(configKey);
+    const item = window.localStorage.getItem(fullKeyName);
+    if (item === undefined || item === null) {
+      // If we didn't persist it, return default value
+      return defaultValue;
+    } else {
+      const parsedItem = JSON.parse(item);
+      return parsedItem;
+    }
+  }
+  #set(configKey, value) {
+    // Persist the value in LocalStorage
+    const fullKeyName = this.#getFullKeyName(configKey);
+    window.localStorage.setItem(fullKeyName, JSON.stringify(value));
+  }
+};
+const config = new Config(configItems, "vyneer-util.");
 
 document.addEventListener(
   "keypress",
@@ -246,7 +257,7 @@ function injectScript() {
             });
 
             // show embeds on launch
-            if (embedsOnLaunch) {
+            if (config.embedsOnLaunch) {
               embeds();
             }
 
@@ -306,7 +317,7 @@ function injectScript() {
   embedsButton.title = "Embeds";
   let embedsButton_i = document.createElement("i");
   embedsButton_i.className = "btn-icon";
-  if (embedIconStyle !== 1) {
+  if (config.embedIconStyle !== 1) {
     embedsButton_i.innerHTML = "🎬";
   } else {
     embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3Csvg viewBox='9 5 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' stroke='white' d='M10,10 l0,-1 l7,-3 l0,1 l-7,3 l0,5 l7,0 l0,-5 l-7,0' /%3E%3C/svg%3E")`;
@@ -314,7 +325,7 @@ function injectScript() {
   embedsButton_i.style.fontStyle = "normal";
   embedsButton_i.style.fontSize = "larger";
   embedsButton_i.style.textAlign = "center";
-  switch (embedIconStyle) {
+  switch (config.embedIconStyle) {
     case 3:
       embedsButton_i.style.filter = "saturate(0)";
       break;
@@ -405,14 +416,8 @@ function injectScript() {
   let alwaysScrollDownCheck = document.createElement("input");
   alwaysScrollDownCheck.name = "alwaysScrollDown";
   alwaysScrollDownCheck.type = "checkbox";
-  alwaysScrollDownCheck.checked = alwaysScrollDown;
-  alwaysScrollDownCheck.addEventListener("change", () => {
-    alwaysScrollDown = alwaysScrollDownCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.alwaysScrollDown",
-      alwaysScrollDownCheck.checked
-    );
-  });
+  alwaysScrollDownCheck.checked = config.alwaysScrollDown;
+  alwaysScrollDownCheck.addEventListener("change", () => config.alwaysScrollDown = alwaysScrollDownCheck.checked);
   alwaysScrollDownLabel.prepend(alwaysScrollDownCheck);
 
   // isUsername checks if the given element is a username element (can be usernames in messages themselves or in the list of current users)
@@ -453,20 +458,16 @@ function injectScript() {
   let doubleClickCopyCheck = document.createElement("input");
   doubleClickCopyCheck.name = "doubleClickCopy";
   doubleClickCopyCheck.type = "checkbox";
-  doubleClickCopyCheck.checked = doubleClickCopy;
+  doubleClickCopyCheck.checked = config.doubleClickCopy;
   doubleClickCopyCheck.addEventListener("change", () => {
-    doubleClickCopy = doubleClickCopyCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.doubleClickCopy",
-      doubleClickCopyCheck.checked
-    );
+    config.doubleClickCopy = doubleClickCopyCheck.checked;
     window.removeEventListener("dblclick", doubleClickCopyListener);
-    if (doubleClickCopy) {
+    if (config.doubleClickCopy) {
       // if a username is double clicked copy it to the chat input
       window.addEventListener("dblclick", doubleClickCopyListener);
     }
   });
-  if (doubleClickCopy) {
+  if (config.doubleClickCopy) {
     // if a username is double clicked copy it to the chat input
     window.addEventListener("dblclick", doubleClickCopyListener);
   }
@@ -505,14 +506,10 @@ function injectScript() {
   let changeTitleOnLiveCheck = document.createElement("input");
   changeTitleOnLiveCheck.name = "changeTitleOnLive";
   changeTitleOnLiveCheck.type = "checkbox";
-  changeTitleOnLiveCheck.checked = changeTitleOnLive;
+  changeTitleOnLiveCheck.checked = config.changeTitleOnLive;
   changeTitleOnLiveCheck.addEventListener("change", () => {
-    changeTitleOnLive = changeTitleOnLiveCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.changeTitleOnLive",
-      changeTitleOnLiveCheck.checked
-    );
-    if (changeTitleOnLive && livePill != undefined) {
+    config.changeTitleOnLive = changeTitleOnLiveCheck.checked;
+    if (config.changeTitleOnLive && livePill != undefined) {
       liveObserver.observe(livePill, {
         childList: true,
       });
@@ -520,14 +517,14 @@ function injectScript() {
       liveObserver.disconnect();
     }
   });
-  if (changeTitleOnLive && livePill != undefined) {
+  if (config.changeTitleOnLive && livePill != undefined) {
     liveObserver.observe(livePill, {
       childList: true,
     });
   } else {
     liveObserver.disconnect();
   }
-  if (changeTitleOnLive && livePill != undefined) {
+  if (config.changeTitleOnLive && livePill != undefined) {
     checkLive(livePill);
   }
   changeTitleOnLiveLabel.prepend(changeTitleOnLiveCheck);
@@ -565,14 +562,10 @@ function injectScript() {
   embedIconStyleOption4.innerHTML = "Movie clapper outline";
   embedIconStyleSelect.appendChild(embedIconStyleOption4);
 
-  embedIconStyleSelect.value = embedIconStyle;
+  embedIconStyleSelect.value = config.embedIconStyle;
   embedIconStyleSelect.addEventListener("change", () => {
-    embedIconStyle = parseInt(embedIconStyleSelect.value);
-    window.localStorage.setItem(
-      "vyneer-util.embedIconStyle",
-      embedIconStyleSelect.value
-    );
-    switch (embedIconStyle) {
+    config.embedIconStyle = parseInt(embedIconStyleSelect.value);
+    switch (config.embedIconStyle) {
       case 1:
         embedsButton_i.innerHTML = "";
         embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3Csvg viewBox='9 5 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' stroke='white' d='M10,10 l0,-1 l7,-3 l0,1 l-7,3 l0,5 l7,0 l0,-5 l-7,0' /%3E%3C/svg%3E")`;
@@ -615,14 +608,8 @@ function injectScript() {
   let embedsOnLaunchCheck = document.createElement("input");
   embedsOnLaunchCheck.name = "embedsOnLaunch";
   embedsOnLaunchCheck.type = "checkbox";
-  embedsOnLaunchCheck.checked = embedsOnLaunch;
-  embedsOnLaunchCheck.addEventListener("change", () => {
-    embedsOnLaunch = embedsOnLaunchCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.embedsOnLaunch",
-      embedsOnLaunchCheck.checked
-    );
-  });
+  embedsOnLaunchCheck.checked = config.embedsOnLaunch;
+  embedsOnLaunchCheck.addEventListener("change", () => config.embedsOnLaunch = embedsOnLaunchCheck.checked);
   embedsOnLaunchLabel.prepend(embedsOnLaunchCheck);
 
   // creating a latest embeds value setting
@@ -634,14 +621,8 @@ function injectScript() {
   let lastEmbedsCheck = document.createElement("input");
   lastEmbedsCheck.name = "lastEmbeds";
   lastEmbedsCheck.type = "checkbox";
-  lastEmbedsCheck.checked = lastEmbeds;
-  lastEmbedsCheck.addEventListener("change", () => {
-    lastEmbeds = lastEmbedsCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.lastEmbeds",
-      lastEmbedsCheck.checked
-    );
-  });
+  lastEmbedsCheck.checked = config.lastEmbeds;
+  lastEmbedsCheck.addEventListener("change", () => config.lastEmbeds = lastEmbedsCheck.checked);
   lastEmbedsLabel.prepend(lastEmbedsCheck);
 
   // creating a show last embeds if none in x minutes setting
@@ -654,14 +635,8 @@ function injectScript() {
   let lastIfNoneCheck = document.createElement("input");
   lastIfNoneCheck.name = "lastIfNone";
   lastIfNoneCheck.type = "checkbox";
-  lastIfNoneCheck.checked = lastIfNone;
-  lastIfNoneCheck.addEventListener("change", () => {
-    lastIfNone = lastIfNoneCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.lastIfNone",
-      lastIfNoneCheck.checked
-    );
-  });
+  lastIfNoneCheck.checked = config.lastIfNone;
+  lastIfNoneCheck.addEventListener("change", () => config.lastIfNone = lastIfNoneCheck.checked);
   lastIfNoneLabel.prepend(lastIfNoneCheck);
 
   // creating an embed time value setting
@@ -669,8 +644,7 @@ function injectScript() {
   embedTimeGroup.className = "form-group row";
   let embedTimeLabel = document.createElement("label");
   embedTimeLabel.innerHTML = "Embed Time Span";
-  embedTimeLabel.title =
-    "Show embeds from the last amount of minutes that this is set to";
+  embedTimeLabel.title = "Show embeds from the last amount of minutes that this is set to";
   embedTimeLabel.style.marginBottom = 0;
   embedTimeGroup.appendChild(embedTimeLabel);
   let embedTimeArea = document.createElement("input");
@@ -680,13 +654,10 @@ function injectScript() {
   embedTimeArea.max = 60;
   embedTimeArea.min = 5;
   embedTimeArea.placeholder = "5 to 60 minutes";
-  embedTimeArea.value = embedTime;
+  embedTimeArea.value = config.embedTime;
   embedTimeArea.style.width = "120px";
   embedTimeArea.style.marginLeft = ".6em";
-  embedTimeArea.addEventListener("change", () => {
-    embedTime = embedTimeArea.value;
-    window.localStorage.setItem("vyneer-util.embedTime", embedTimeArea.value);
-  });
+  embedTimeArea.addEventListener("change", () => config.embedTime = embedTimeArea.value);
   embedTimeGroup.appendChild(embedTimeArea);
 
   // creating an twitch embed formatting setting
@@ -713,14 +684,8 @@ function injectScript() {
     "#twitch/xqcow (BEST ONE ONLY TOP CRAZED ALWAYS TODAY OK MAYBE YES RIGHT NOW...)";
   twitchEmbedFormatSelect.appendChild(twitchEmbedFormatOption2);
 
-  twitchEmbedFormatSelect.value = twitchEmbedFormat;
-  twitchEmbedFormatSelect.addEventListener("change", () => {
-    twitchEmbedFormat = parseInt(twitchEmbedFormatSelect.value);
-    window.localStorage.setItem(
-      "vyneer-util.twitchEmbedFormat",
-      twitchEmbedFormatSelect.value
-    );
-  });
+  twitchEmbedFormatSelect.value = config.twitchEmbedFormat;
+  twitchEmbedFormatSelect.addEventListener("change", () => config.twitchEmbedFormat = parseInt(twitchEmbedFormatSelect.value));
 
   twitchEmbedFormatGroup.appendChild(twitchEmbedFormatSelect);
 
@@ -763,14 +728,8 @@ function injectScript() {
   youtubeEmbedFormatOption5.innerHTML = "#youtube/Debating JonTron";
   youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption5);
 
-  youtubeEmbedFormatSelect.value = youtubeEmbedFormat;
-  youtubeEmbedFormatSelect.addEventListener("change", () => {
-    youtubeEmbedFormat = parseInt(youtubeEmbedFormatSelect.value);
-    window.localStorage.setItem(
-      "vyneer-util.youtubeEmbedFormat",
-      youtubeEmbedFormatSelect.value
-    );
-  });
+  youtubeEmbedFormatSelect.value = config.youtubeEmbedFormat;
+  youtubeEmbedFormatSelect.addEventListener("change", () => config.youtubeEmbedFormat = parseInt(youtubeEmbedFormatSelect.value));
 
   youtubeEmbedFormatGroup.appendChild(youtubeEmbedFormatSelect);
 
@@ -787,23 +746,15 @@ function injectScript() {
   phraseColorArea.name = "phraseColorArea";
   phraseColorArea.type = "text";
   phraseColorArea.className = "form-control";
-  phraseColorArea.placeholder = "1f0000";
-  phraseColorArea.value = phraseColor;
+  phraseColorArea.placeholder = configItems.phraseColor.defaultValue;
+  phraseColorArea.value = config.phraseColor;
   phraseColorArea.style.marginLeft = ".6em";
   phraseColorArea.style.width = "60px";
   phraseColorArea.addEventListener("change", () => {
     if (phraseColorArea.value.length > 0) {
-      phraseColor = phraseColorArea.value;
-      window.localStorage.setItem(
-        "vyneer-util.phraseColor",
-        JSON.stringify(phraseColorArea.value)
-      );
+      config.phraseColor = phraseColorArea.value;
     } else {
-      phraseColor = "1f0000";
-      window.localStorage.setItem(
-        "vyneer-util.phraseColor",
-        JSON.stringify("1f0000")
-      );
+      config.phraseColor = configItems.phraseColor.defaultValue;
     }
   });
   phraseColorGroup.appendChild(phraseColorArea);
@@ -821,23 +772,15 @@ function injectScript() {
   nukeColorArea.name = "nukeColorArea";
   nukeColorArea.type = "text";
   nukeColorArea.className = "form-control";
-  nukeColorArea.placeholder = "1f1500";
-  nukeColorArea.value = nukeColor;
+  nukeColorArea.placeholder = configItems.nukeColor.defaultValue;
+  nukeColorArea.value = config.nukeColor;
   nukeColorArea.style.marginLeft = ".6em";
   nukeColorArea.style.width = "60px";
   nukeColorArea.addEventListener("change", () => {
     if (nukeColorArea.value.length > 0) {
-      nukeColor = nukeColorArea.value;
-      window.localStorage.setItem(
-        "vyneer-util.nukeColor",
-        JSON.stringify(nukeColorArea.value)
-      );
+      config.nukeColor = nukeColorArea.value;
     } else {
-      nukeColor = "1f1500";
-      window.localStorage.setItem(
-        "vyneer-util.nukeColor",
-        JSON.stringify("1f1500")
-      );
+      config.nukeColor = configItems.nukeColor.defaultValue;
     }
   });
   nukeColorGroup.appendChild(nukeColorArea);
@@ -851,20 +794,16 @@ function injectScript() {
   let colorOnMutelinksCheck = document.createElement("input");
   colorOnMutelinksCheck.name = "colorOnMutelinks";
   colorOnMutelinksCheck.type = "checkbox";
-  colorOnMutelinksCheck.checked = colorOnMutelinks;
+  colorOnMutelinksCheck.checked = config.colorOnMutelinks;
   colorOnMutelinksCheck.addEventListener("change", () => {
-    colorOnMutelinks = colorOnMutelinksCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.colorOnMutelinks",
-      colorOnMutelinksCheck.checked
-    );
-    if (colorOnMutelinks) {
+    config.colorOnMutelinks = colorOnMutelinksCheck.checked;
+    if (config.colorOnMutelinks) {
       document.head.appendChild(mutelinksColorStyle);
     } else {
       document.querySelector("#mutelinksColorStyle").remove();
     }
   });
-  if (colorOnMutelinks) {
+  if (config.colorOnMutelinks) {
     document.head.appendChild(mutelinksColorStyle);
   }
   colorOnMutelinksLabel.prepend(colorOnMutelinksCheck);
@@ -882,23 +821,15 @@ function injectScript() {
   mutelinksColorArea.name = "mutelinksColorArea";
   mutelinksColorArea.type = "text";
   mutelinksColorArea.className = "form-control";
-  mutelinksColorArea.placeholder = "120016";
-  mutelinksColorArea.value = mutelinksColor;
+  mutelinksColorArea.placeholder = configItems.mutelinksColor.defaultValue;
+  mutelinksColorArea.value = config.mutelinksColor;
   mutelinksColorArea.style.marginLeft = ".6em";
   mutelinksColorArea.style.width = "60px";
   mutelinksColorArea.addEventListener("change", () => {
     if (mutelinksColorArea.value.length > 0) {
-      mutelinksColor = mutelinksColorArea.value;
-      window.localStorage.setItem(
-        "vyneer-util.mutelinksColor",
-        JSON.stringify(mutelinksColorArea.value)
-      );
+      config.mutelinksColor = mutelinksColorArea.value;
     } else {
-      mutelinksColor = "120016";
-      window.localStorage.setItem(
-        "vyneer-util.mutelinksColor",
-        JSON.stringify("120016")
-      );
+      config.mutelinksColor = configItems.mutelinksColor.defaultValue;
     }
   });
   mutelinksColorGroup.appendChild(mutelinksColorArea);
@@ -915,21 +846,14 @@ function injectScript() {
   customPhrasesArea.style.resize = "vertical";
   customPhrasesArea.className = "form-control";
   customPhrasesArea.placeholder = "Comma separated ... (regex not supported)";
-  customPhrasesArea.value = customPhrases == "[]" ? "" : customPhrases;
+  customPhrasesArea.value =
+    config.customPhrases == "[]" ? "" : config.customPhrases;
   customPhrasesArea.addEventListener("change", () => {
     let val = customPhrasesArea.value.split(",");
     if (customPhrasesArea.value.length > 0) {
-      customPhrases = val;
-      window.localStorage.setItem(
-        "vyneer-util.customPhrases",
-        JSON.stringify(val)
-      );
+      config.customPhrases = val;
     } else {
-      customPhrases = [];
-      window.localStorage.setItem(
-        "vyneer-util.customPhrases",
-        JSON.stringify(customPhrases)
-      );
+      config.customPhrases = configItems.customPhrases.defaultValue;
     }
   });
   customPhrasesGroup.appendChild(customPhrasesArea);
@@ -947,30 +871,22 @@ function injectScript() {
   customColorArea.name = "customColorArea";
   customColorArea.type = "text";
   customColorArea.className = "form-control";
-  customColorArea.placeholder = "1f0000";
-  customColorArea.value = customColor;
+  customColorArea.placeholder = configItems.customColor.defaultValue;
+  customColorArea.value = config.customColor;
   customColorArea.style.marginLeft = ".6em";
   customColorArea.style.width = "60px";
   customColorArea.addEventListener("change", () => {
     if (customColorArea.value.length > 0) {
-      customColor = customColorArea.value;
-      window.localStorage.setItem(
-        "vyneer-util.customColor",
-        JSON.stringify(customColorArea.value)
-      );
+      config.customColor = customColorArea.value;
     } else {
-      customColor = "1f0000";
-      window.localStorage.setItem(
-        "vyneer-util.customColor",
-        JSON.stringify("1f0000")
-      );
+      config.customColor = configItems.customColor.defaultValue;
     }
   });
   customColorGroup.appendChild(customColorArea);
 
   // make an observer that checks for embeds
   let embedObserver = new MutationObserver((mutations) => {
-    if (youtubeEmbedFormat != 1 && mutations.length < 3) {
+    if (config.youtubeEmbedFormat != 1 && mutations.length < 3) {
       for (let mutation of mutations) {
         for (let node of mutation.addedNodes) {
           if (node.matches("div.msg-chat.msg-user")) {
@@ -992,7 +908,7 @@ function injectScript() {
                         if ("title" in data && "author_name" in data) {
                           let title = data["title"];
                           let channel = data["author_name"];
-                          switch (youtubeEmbedFormat) {
+                          switch (config.youtubeEmbedFormat) {
                             case 2:
                               embedNode.text = `${platform}/${id} (${channel})`;
                               break;
@@ -1028,14 +944,10 @@ function injectScript() {
   let editEmbedsCheck = document.createElement("input");
   editEmbedsCheck.name = "editEmbeds";
   editEmbedsCheck.type = "checkbox";
-  editEmbedsCheck.checked = editEmbeds;
+  editEmbedsCheck.checked = config.editEmbeds;
   editEmbedsCheck.addEventListener("change", () => {
-    editEmbeds = editEmbedsCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.editEmbeds",
-      editEmbedsCheck.checked
-    );
-    if (editEmbeds) {
+    config.editEmbeds = editEmbedsCheck.checked;
+    if (config.editEmbeds) {
       embedObserver.observe(chatlines, {
         childList: true,
       });
@@ -1043,7 +955,7 @@ function injectScript() {
       embedObserver.disconnect();
     }
   });
-  if (editEmbeds) {
+  if (config.editEmbeds) {
     embedObserver.observe(chatlines, {
       childList: true,
     });
@@ -1062,14 +974,8 @@ function injectScript() {
   let preventEnterCheck = document.createElement("input");
   preventEnterCheck.name = "preventEnter";
   preventEnterCheck.type = "checkbox";
-  preventEnterCheck.checked = preventEnter;
-  preventEnterCheck.addEventListener("change", () => {
-    preventEnter = preventEnterCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.preventEnter",
-      preventEnterCheck.checked
-    );
-  });
+  preventEnterCheck.checked = config.preventEnter;
+  preventEnterCheck.addEventListener("change", () => config.preventEnter = preventEnterCheck.checked);
   preventEnterLabel.prepend(preventEnterCheck);
 
   // creating hide invidual flairs setting
@@ -1096,26 +1002,23 @@ function injectScript() {
     hideFlairsList.style.height = `${hideFlairsList.scrollHeight}px`;
   }
   function flairToButton(flair) {
-    const isHidden = hiddenFlairs.includes(flair);
+    const isHidden = config.hiddenFlairs.includes(flair);
     return `<span class="flair-selector flair ${flair} ${
       isHidden ? "hide-flair" : ""
     }" data-flair-id="${flair}"></span>`;
   }
   function toggleFlair(target) {
+    if (!target.classList.contains("flair-selector")) return;
     const hideFlair = target.classList.toggle("hide-flair");
     const targetFlairId = target.dataset.flairId;
     // Save to config
     if (hideFlair) {
       // Add flair to hide list
-      hiddenFlairs = [...hiddenFlairs, targetFlairId];
+      config.hiddenFlairs = [...config.hiddenFlairs, targetFlairId];
     } else {
       // Remove flair from hide list
-      hiddenFlairs = hiddenFlairs.filter((f) => f !== targetFlairId);
+      config.hiddenFlairs = config.hiddenFlairs.filter((f) => f !== targetFlairId);
     }
-    window.localStorage.setItem(
-      "vyneer-util.hiddenFlairs",
-      JSON.stringify(hiddenFlairs)
-    );
     // Change CSS to hide chosen flairs
     addFlairHidingStyles();
   }
@@ -1127,7 +1030,7 @@ function injectScript() {
       styleElem.id = styleId;
       document.head.appendChild(styleElem);
     }
-    styleElem.innerHTML = hiddenFlairs.reduce(
+    styleElem.innerHTML = config.hiddenFlairs.reduce(
       (prev, curr) => prev + `.msg-chat .flair.${curr} { display: none; }\n`,
       ""
     );
@@ -1204,7 +1107,7 @@ function injectScript() {
   setTimeout(removeUnusedFlairs, 2000); // it would be nice to have a better way to get flairs
 
   // creating a setting to toggle mentioned being stuck to top of window when scrolled past
-  const stickyMentionsGroup = document.createElement('div');
+  const stickyMentionsGroup = document.createElement("div");
   stickyMentionsGroup.className = "form-group checkbox";
   const stickyMentionsLabel = document.createElement("label");
   stickyMentionsLabel.innerHTML = "Stick recent mentions to top of chat";
@@ -1213,17 +1116,16 @@ function injectScript() {
   const stickyMentionsCheck = document.createElement("input");
   stickyMentionsCheck.name = "stickyMentions";
   stickyMentionsCheck.type = "checkbox";
-  stickyMentionsCheck.checked = stickyMentions;
+  stickyMentionsCheck.checked = config.stickyMentions;
   function toggleStickyMentions(toggle) {
-    document.getElementById('chat-win-main').classList.toggle('vyneer-util-sticky-mentions-on', toggle);
+    document
+      .getElementById("chat-win-main")
+      .classList
+      .toggle("vyneer-util-sticky-mentions-on", toggle);
   }
   stickyMentionsCheck.addEventListener("change", () => {
-    stickyMentions = stickyMentionsCheck.checked;
-    window.localStorage.setItem(
-      "vyneer-util.stickyMentions",
-      stickyMentionsCheck.checked
-    );
-    toggleStickyMentions(stickyMentions);
+    config.stickyMentions = stickyMentionsCheck.checked;
+    toggleStickyMentions(config.stickyMentions);
   });
   stickyMentionsLabel.prepend(stickyMentionsCheck);
   settingsCss += `
@@ -1233,7 +1135,7 @@ function injectScript() {
       z-index: 121;
     }
   `;
-  toggleStickyMentions(stickyMentions);
+  toggleStickyMentions(config.stickyMentions);
 
   // Add our settings' styles to the document
   const settingsStyles = document.createElement("style");
@@ -1332,7 +1234,7 @@ function injectScript() {
       switch (str.replace(this.bigscreenregex, "$3")) {
         case "#twitch":
           source = "https://twitch.tv/" + str.split("/")[1];
-          switch (twitchEmbedFormat) {
+          switch (config.twitchEmbedFormat) {
             case 2:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -1359,7 +1261,7 @@ function injectScript() {
           break;
         case "#twitch-vod":
           source = "https://twitch.tv/videos/" + str.split("/")[1];
-          switch (twitchEmbedFormat) {
+          switch (config.twitchEmbedFormat) {
             case 2:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -1386,7 +1288,7 @@ function injectScript() {
           break;
         case "#twitch-clip":
           source = "https://clips.twitch.tv/" + str.split("/")[1];
-          switch (twitchEmbedFormat) {
+          switch (config.twitchEmbedFormat) {
             case 2:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -1413,7 +1315,7 @@ function injectScript() {
           break;
         case "#youtube":
           source = "https://youtu.be/" + str.split("/")[1];
-          switch (youtubeEmbedFormat) {
+          switch (config.youtubeEmbedFormat) {
             case 2:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -1567,8 +1469,8 @@ function injectScript() {
       });
     }
 
-    if (customPhrases.length > 0) {
-      resultCustom = customPhrases.find((entry) => {
+    if (config.customPhrases.length > 0) {
+      resultCustom = config.customPhrases.find((entry) => {
         if (text.includes(entry)) {
           return true;
         } else {
@@ -1579,23 +1481,23 @@ function injectScript() {
 
     if (result != undefined) {
       foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${phraseColor}`;
-      document.body.style.setProperty("--flashing-color", `#${phraseColor}`);
-      if (preventEnter) {
+      textarea.style.backgroundColor = `#${config.phraseColor}`;
+      document.body.style.setProperty("--flashing-color", `#${config.phraseColor}`);
+      if (config.preventEnter) {
         sendAnywayButton.style.display = "";
       }
     } else if (resultCustom != undefined) {
       foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${customColor}`;
-      document.body.style.setProperty("--flashing-color", `#${customColor}`);
-      if (preventEnter) {
+      textarea.style.backgroundColor = `#${config.customColor}`;
+      document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
+      if (config.preventEnter) {
         sendAnywayButton.style.display = "";
       }
     } else if (resultNukes != undefined) {
       foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${nukeColor}`;
-      document.body.style.setProperty("--flashing-color", `#${nukeColor}`);
-      if (preventEnter) {
+      textarea.style.backgroundColor = `#${config.nukeColor}`;
+      document.body.style.setProperty("--flashing-color", `#${config.nukeColor}`);
+      if (config.preventEnter) {
         sendAnywayButton.style.display = "";
       }
     } else {
@@ -1603,7 +1505,7 @@ function injectScript() {
       if (textarea.style.backgroundColor != "") {
         textarea.style.backgroundColor = "";
       }
-      if (preventEnter) {
+      if (config.preventEnter) {
         sendAnywayButton.style.display = "none";
       }
     }
@@ -1629,7 +1531,7 @@ function injectScript() {
           );
         }
 
-        if (alwaysScrollDown) {
+        if (config.alwaysScrollDown) {
           chatlines.scrollTop = chatlines.scrollHeight;
         } else {
           if (window.getComputedStyle(scrollnotify).bottom != "0px") {
@@ -1643,13 +1545,13 @@ function injectScript() {
       if (!emb) {
         if (!ifnone) {
           new DGGMsg(
-            `Looks like nobody embedded anything in the last ${embedTime} minutes.`,
+            `Looks like nobody embedded anything in the last ${config.embedTime} minutes.`,
             "msg-status msg-error",
             ""
           );
         } else {
           new DGGMsg(
-            `Looks like nobody embedded anything in the last ${embedTime} minutes, showing you the last embeds instead.`,
+            `Looks like nobody embedded anything in the last ${config.embedTime} minutes, showing you the last embeds instead.`,
             "msg-status msg-error",
             ""
           );
@@ -1658,7 +1560,7 @@ function injectScript() {
             url: `https://vyneer.me/tools/embeds/last`,
             onload: (response) => {
               let data = JSON.parse(response.response);
-              if (lastEmbeds) {
+              if (config.lastEmbeds) {
                 data = data.reverse();
               }
               serveEmbeds(data, true, false);
@@ -1673,7 +1575,7 @@ function injectScript() {
         );
       }
 
-      if (alwaysScrollDown) {
+      if (config.alwaysScrollDown) {
         chatlines.scrollTop = chatlines.scrollHeight;
       } else {
         if (window.getComputedStyle(scrollnotify).bottom != "0px") {
@@ -1695,19 +1597,19 @@ function injectScript() {
   function embeds() {
     let embedUrl;
 
-    if (!lastEmbeds) {
+    if (!config.lastEmbeds) {
       new DGGMsg(
-        `Getting top 5 embeds in the last ${embedTime} minutes...`,
+        `Getting top 5 embeds in the last ${config.embedTime} minutes...`,
         "msg-info",
         ""
       );
-      embedUrl = `https://vyneer.me/tools/embeds?t=${embedTime}`;
+      embedUrl = `https://vyneer.me/tools/embeds?t=${config.embedTime}`;
     } else {
       new DGGMsg(`Getting last 5 embeds...`, "msg-info", "");
       embedUrl = `https://vyneer.me/tools/embeds/last`;
     }
 
-    if (alwaysScrollDown) {
+    if (config.alwaysScrollDown) {
       chatlines.scrollTop = chatlines.scrollHeight;
     } else {
       if (window.getComputedStyle(scrollnotify).bottom != "0px") {
@@ -1722,10 +1624,10 @@ function injectScript() {
       url: embedUrl,
       onload: (response) => {
         let data = JSON.parse(response.response);
-        if (lastEmbeds) {
+        if (config.lastEmbeds) {
           data = data.reverse();
         }
-        serveEmbeds(data, lastEmbeds, lastIfNone);
+        serveEmbeds(data, config.lastEmbeds, config.lastIfNone);
       },
     });
   }
@@ -1782,7 +1684,7 @@ function injectScript() {
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `Links mentioning ${data[0].user} WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "on";
-            if (colorOnMutelinks) {
+            if (config.colorOnMutelinks) {
               document.body.style.setProperty(
                 "--mutelinks-color",
                 `#${mutelinksColorArea.value}`
@@ -1792,7 +1694,7 @@ function injectScript() {
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `ANY link WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "all";
-            if (colorOnMutelinks) {
+            if (config.colorOnMutelinks) {
               document.body.style.setProperty(
                 "--mutelinks-color",
                 `#${mutelinksColorArea.value}`
@@ -1803,7 +1705,7 @@ function injectScript() {
               linksAlertButton.style.display = "none";
               linksAlertButton.title = "Mutelinks";
             }
-            if (colorOnMutelinks) {
+            if (config.colorOnMutelinks) {
               document.body.style.setProperty("--mutelinks-color", `#111`);
             }
           }
@@ -1837,7 +1739,7 @@ function injectScript() {
   nukeAlertButton.addEventListener("click", () => {
     new DGGMsg(`Showing current nukes...`, "msg-info", "");
 
-    if (alwaysScrollDown) {
+    if (config.alwaysScrollDown) {
       chatlines.scrollTop = chatlines.scrollHeight;
     } else {
       if (window.getComputedStyle(scrollnotify).bottom != "0px") {
@@ -1856,7 +1758,7 @@ function injectScript() {
           "msg-status msg-historical",
           ""
         );
-        if (alwaysScrollDown) {
+        if (config.alwaysScrollDown) {
           chatlines.scrollTop = chatlines.scrollHeight;
         } else {
           if (window.getComputedStyle(scrollnotify).bottom != "0px") {
@@ -1872,7 +1774,7 @@ function injectScript() {
         "msg-status msg-error",
         ""
       );
-      if (alwaysScrollDown) {
+      if (config.alwaysScrollDown) {
         chatlines.scrollTop = chatlines.scrollHeight;
       } else {
         if (window.getComputedStyle(scrollnotify).bottom != "0px") {
