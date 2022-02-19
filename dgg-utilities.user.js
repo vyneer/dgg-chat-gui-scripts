@@ -136,6 +136,11 @@ class Config {
   #getFullKeyName(configKey) {
     return `${this.#configKeyPrefix}${configKey}`;
   }
+  #save(configKey, value) {
+    // Persist the value in LocalStorage
+    const fullKeyName = this.#getFullKeyName(configKey);
+    window.localStorage.setItem(fullKeyName, JSON.stringify(value));
+  }
   #load(configKey, defaultValue) {
     // Get the value we persisted, in localStorage
     const fullKeyName = this.#getFullKeyName(configKey);
@@ -147,11 +152,6 @@ class Config {
       const parsedItem = JSON.parse(item);
       return parsedItem;
     }
-  }
-  #save(configKey, value) {
-    // Persist the value in LocalStorage
-    const fullKeyName = this.#getFullKeyName(configKey);
-    window.localStorage.setItem(fullKeyName, JSON.stringify(value));
   }
 };
 const config = new Config(configItems, "vyneer-util.");
