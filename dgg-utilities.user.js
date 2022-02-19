@@ -119,14 +119,14 @@ class Config {
         set: function (value) {
           // Set the private value
           this[privateKeyName] = value;
-          // Persist it as well
-          this.#set(keyName, value);
+          // Save it to persistent storage as well
+          this.#save(keyName, value);
         },
         get: function () {
           // Check if value is saved in config object
           if (this[privateKeyName] === undefined) {
             // If not, load it from persistent storage, or use default value
-            this[privateKeyName] = this.#get(keyName, configKey.defaultValue);
+            this[privateKeyName] = this.#load(keyName, configKey.defaultValue);
           }
           return this[privateKeyName];
         },
@@ -136,7 +136,7 @@ class Config {
   #getFullKeyName(configKey) {
     return `${this.#configKeyPrefix}${configKey}`;
   }
-  #get(configKey, defaultValue) {
+  #load(configKey, defaultValue) {
     // Get the value we persisted, in localStorage
     const fullKeyName = this.#getFullKeyName(configKey);
     const item = window.localStorage.getItem(fullKeyName);
@@ -148,7 +148,7 @@ class Config {
       return parsedItem;
     }
   }
-  #set(configKey, value) {
+  #save(configKey, value) {
     // Persist the value in LocalStorage
     const fullKeyName = this.#getFullKeyName(configKey);
     window.localStorage.setItem(fullKeyName, JSON.stringify(value));
