@@ -999,7 +999,6 @@ function injectScript() {
     for (let f of toRemove) {
       f.remove();
     }
-    hideFlairsList.style.height = `${hideFlairsList.scrollHeight}px`;
   }
   function flairToButton(flair) {
     const isHidden = config.hiddenFlairs.includes(flair);
@@ -1081,13 +1080,13 @@ function injectScript() {
       display: grid;
       grid-template-columns: repeat(10, 1fr);
       gap: 4px;
-      transition: all 200ms ease-in-out;
+      transition: transform 200ms ease-in-out;
       transform-origin: top center;
       overflow: hidden;
     }
     .hide-flairs-list:not(.expanded) {
       transform: scaleY(0);
-      height: 0 !important;
+      height: 0;
     }
     .flair-selector {
       display: inline-block;
