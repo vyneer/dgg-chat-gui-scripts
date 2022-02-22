@@ -129,7 +129,7 @@ class Config {
           // Check if value is saved in config object
           if (this[privateKeyName] === undefined) {
             // If not, load it from persistent storage, or use default value
-            this[privateKeyName] = this.#load(keyName, configKey.defaultValue);
+            this[privateKeyName] = this.#load(keyName) ?? configKey.defaultValue;
           }
           return this[privateKeyName];
         },
@@ -144,14 +144,11 @@ class Config {
     const fullKeyName = this.#getFullKeyName(configKey);
     window.localStorage.setItem(fullKeyName, JSON.stringify(value));
   }
-  #load(configKey, defaultValue) {
+  #load(configKey) {
     // Get the value we persisted, in localStorage
     const fullKeyName = this.#getFullKeyName(configKey);
     const item = window.localStorage.getItem(fullKeyName);
-    if (item === undefined || item === null) {
-      // If we didn't persist it, return default value
-      return defaultValue;
-    } else {
+    if (item != null) {
       const parsedItem = JSON.parse(item);
       return parsedItem;
     }
