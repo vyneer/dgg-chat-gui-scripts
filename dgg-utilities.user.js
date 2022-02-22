@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.02.14
+// @version      dev-2022.02.22
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -27,7 +27,7 @@
 // * firemonkey compatibility
 // * add an option to hide individual flairs (big thanks to Voiture <3)
 // * add an option to stick recent mentions to top of chat (big PepoTurkey to Voiture gobl)
-// * add an option to ignore certain phrases, decoupled from harsh ignore setting
+// * add an option to ignore certain phrases, decoupled from harsh ignore setting (big PepoTurkey to Voiture gobl)
 // * add an option to double click a username to append it to the input box (big thanks to @mattroseman <3)
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
