@@ -1258,7 +1258,6 @@ function injectScript() {
   settingsArea.appendChild(mutelinksColorGroup);
   settingsArea.appendChild(customPhrasesGroup);
   settingsArea.appendChild(customColorGroup);
-  settingsArea.appendChild(ignoredPhrasesGroup);
   let experimentalTitle = document.createElement("h4");
   experimentalTitle.innerHTML = "Utilities Experimental Settings";
   experimentalTitle.style.marginBottom = "0px";
@@ -1268,6 +1267,7 @@ function injectScript() {
   experimentalSubTitle.style.marginTop = "0px";
   settingsArea.appendChild(experimentalTitle);
   settingsArea.appendChild(experimentalSubTitle);
+  settingsArea.appendChild(ignoredPhrasesGroup);
   settingsArea.appendChild(preventEnterGroup);
   settingsArea.appendChild(editEmbedsGroup);
 
