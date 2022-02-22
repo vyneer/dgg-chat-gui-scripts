@@ -27,6 +27,7 @@
 // * firemonkey compatibility
 // * add an option to hide individual flairs (big thanks to Voiture <3)
 // * add an option to stick recent mentions to top of chat (big PepoTurkey to Voiture gobl)
+// * add an option to ignore certain phrases, decoupled from harsh ignore setting
 // * add an option to double click a username to append it to the input box (big thanks to @mattroseman <3)
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
@@ -102,6 +103,8 @@ const configItems = {
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
   stickyMentions    : new ConfigItem("stickyMentions",     false   ),
+  ignorePhrases     : new ConfigItem("ignorePhrases",      []      ),
+  ignoredPhraseList : new ConfigItem("ignoredPhraseList",  []      ),
 };
 class Config {
   #configItems;
@@ -1137,6 +1140,96 @@ function injectScript() {
   `;
   toggleStickyMentions(config.stickyMentions);
 
+  // Ignored phrases
+  const ignoredPhrasesGroup = document.createElement("div");
+  ignoredPhrasesGroup.className = "form-group checkbox";
+  const ignoredPhrasesLabel = document.createElement("label");
+  ignoredPhrasesLabel.innerHTML = "Ignore Phrases";
+  ignoredPhrasesLabel.title = "Messages containing these phrases will be hidden";
+  ignoredPhrasesGroup.appendChild(ignoredPhrasesLabel);
+  const ignoredPhrasesCheck = document.createElement("input");
+  ignoredPhrasesCheck.name = "ignorePhrases";
+  ignoredPhrasesCheck.type = "checkbox";
+  ignoredPhrasesCheck.checked = config.ignorePhrases;
+  ignoredPhrasesLabel.prepend(ignoredPhrasesCheck);
+  const ignoredPhrasesArea = document.createElement("textarea");
+  ignoredPhrasesArea.style.resize = "vertical";
+  ignoredPhrasesArea.className = "form-control";
+  ignoredPhrasesArea.placeholder = "Comma separated ... (regex not supported)";
+  ignoredPhrasesArea.value = config.ignoredPhraseList == "[]" ? "" : config.ignoredPhraseList.join(", ");
+  ignoredPhrasesGroup.appendChild(ignoredPhrasesArea);
+
+  // Functions //
+  function toggleIgnoredPhrases() {
+    document
+      .getElementById("chat-win-main")
+      .classList
+      .toggle("vyneer-util-ignored-phrases-on", config.ignorePhrases);
+
+    // Observe or disconnect mutation observer
+    if (config.ignorePhrases && config.ignoredPhraseList.length > 0) {
+      ignoredPhrasesObserver.observe(chatlines, {
+        childList: true,
+      });
+    } else {
+      ignoredPhrasesObserver.disconnect();
+    }
+
+    // Go through chat messages that observer might have missed while disconnected or if phrase list changed
+    markMessagesContainingIgnoredPhrases(chatlines.children, config.ignoredPhraseList);
+  }
+  function markMessagesContainingIgnoredPhrases(messages, ignoredPhrases) {
+    for (let i = 0; i < messages.length; i++) {
+      let ignored = false;
+      const messageText = messages[i]
+        .getElementsByClassName("text")[0]
+        ?.innerText
+        ?.toLowerCase();
+      if (messageText) {
+        for (let j = 0; j < ignoredPhrases.length; j++) {
+          if (messageText.includes(ignoredPhrases[j])) {
+            ignored = true;
+            break;
+          }
+        }
+      }
+      messages[i].classList.toggle("ignored-phrase", ignored);
+    }
+  }
+
+  // Event listeners //
+  ignoredPhrasesCheck.addEventListener("change", e => {
+    config.ignorePhrases = ignoredPhrasesCheck.checked;
+    toggleIgnoredPhrases();
+  });
+  ignoredPhrasesArea.addEventListener("change", () => {
+    const phrases = ignoredPhrasesArea.value.split(",");
+    if (ignoredPhrasesArea.value.length > 0) {
+      phrasesCleaned = phrases
+        .map(p => p.trim().toLowerCase())
+        .filter(p => p !== "");
+      config.ignoredPhraseList = phrasesCleaned;
+    } else {
+      config.ignoredPhraseList = configItems.ignoredPhraseList.defaultValue;
+    }
+    toggleIgnoredPhrases();
+  });
+
+  // Mutation Observer setup
+  const ignoredPhrasesObserver = new MutationObserver((mutations) => {
+    for (let i = 0; i < mutations.length; i++) {
+      const addedNodes = mutations[i].addedNodes;
+      markMessagesContainingIgnoredPhrases(addedNodes, config.ignoredPhraseList);
+    }
+  });
+  toggleIgnoredPhrases();
+
+  settingsCss += `
+    #chat-win-main.vyneer-util-ignored-phrases-on > .chat-lines > .msg-chat.ignored-phrase:not(.msg-own) {
+      display: none;
+    }
+  `;
+
   // Add our settings' styles to the document
   const settingsStyles = document.createElement("style");
   settingsStyles.id = "vyneer-util-styles";
@@ -1168,6 +1261,7 @@ function injectScript() {
   settingsArea.appendChild(mutelinksColorGroup);
   settingsArea.appendChild(customPhrasesGroup);
   settingsArea.appendChild(customColorGroup);
+  settingsArea.appendChild(ignoredPhrasesGroup);
   let experimentalTitle = document.createElement("h4");
   experimentalTitle.innerHTML = "Utilities Experimental Settings";
   experimentalTitle.style.marginBottom = "0px";
