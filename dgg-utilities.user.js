@@ -436,7 +436,7 @@ function injectScript() {
     const target = event.target;
     if (isUsername(target)) {
       const username = target.text || target.textContent;
-      appendTextToChatBox(username);
+      addToChatBox(username);
     }
   }
 
@@ -444,19 +444,24 @@ function injectScript() {
     const target = event.target;
     if (isEmote(target)) {
       const emote = target.text || target.textContent;
-      appendTextToChatBox(emote);
+      addToChatBox(emote);
     }
   }
 
-  function appendTextToChatBox(text) {
-    // if the chat input has some text, and the last character isn't already a space
-    if (
-      textarea.value.length > 0 &&
-      textarea.value.charAt(textarea.value.length - 1) != " "
-    ) {
-      textarea.value += " ";
-    }
-    textarea.value += `${text.trim()} `;
+  // Adds text to the chat input box, respecting the user's cursor and selection
+  function addToChatBox(str) {
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const messageStart = textarea.value.substr(0, selectionStart);
+    const messageEnd = textarea.value.substr(selectionEnd);
+    const message = `${messageStart.trimEnd()} ${str.trim()} ${messageEnd.trimStart()}`;
+    textarea.value = message;
+    
+    // Reset cursor position
+    textarea.focus();
+    const cursorPosition = `${messageStart.trimEnd()} ${str.trim()} `.length;
+    textarea.selectionStart = cursorPosition;
+    textarea.selectionEnd = cursorPosition;
   }
 
   // creating a double click to copy setting
