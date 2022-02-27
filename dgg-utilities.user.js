@@ -434,20 +434,18 @@ function injectScript() {
   
   function dblClickUserListener(event) {
     const target = event.target;
-    if (!isUsername(target)) {
-      return;
+    if (isUsername(target)) {
+      const username = target.text || target.textContent;
+      appendTextToChatBox(username);
     }
-    const username = target.text || target.textContent;
-    appendTextToChatBox(username);
   }
 
   function dblClickEmoteListener(event) {
     const target = event.target;
-    if (!isEmote(target)) {
-      return;
+    if (isEmote(target)) {
+      const emote = target.text || target.textContent;
+      appendTextToChatBox(emote);
     }
-    const emote = target.text || target.textContent;
-    appendTextToChatBox(emote);
   }
 
   function appendTextToChatBox(text) {
@@ -458,7 +456,7 @@ function injectScript() {
     ) {
       textarea.value += " ";
     }
-    textarea.value += `${text} `;
+    textarea.value += `${text.trim()} `;
   }
 
   // creating a double click to copy setting
