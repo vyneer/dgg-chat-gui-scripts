@@ -454,12 +454,13 @@ function injectScript() {
     const selectionEnd = textarea.selectionEnd;
     const messageStart = textarea.value.substr(0, selectionStart);
     const messageEnd = textarea.value.substr(selectionEnd);
-    const message = `${messageStart.trimEnd()} ${str.trim()} ${messageEnd.trimStart()}`;
+    const newMessageStart = (messageStart === "" ? "" : messageStart.trimEnd() + " ") + str.trim() + " ";
+    const message = newMessageStart + messageEnd.trimStart();
     textarea.value = message;
     
     // Reset cursor position
     textarea.focus();
-    const cursorPosition = `${messageStart.trimEnd()} ${str.trim()} `.length;
+    const cursorPosition = newMessageStart.length;
     textarea.selectionStart = cursorPosition;
     textarea.selectionEnd = cursorPosition;
   }
