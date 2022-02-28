@@ -44,7 +44,8 @@
 // * added strims.gg/angelthump to the list of embeds (i know it's technically not an embed but i figured it's still worth adding it)
 // * better update system (you can just left click now pog) (technically a server side change)
 
-// set to true if you wanna see nuke/mutelinks buttons all the time
+// DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
+// replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
 const DEBUG = false;
 const DEBUG_NUKE_DATA = [
   {
