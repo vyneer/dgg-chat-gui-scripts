@@ -1729,12 +1729,12 @@ function injectScript() {
       method: "GET",
       url: "https://vyneer.me/tools/nukes",
       onload: (response) => {
-        let data = JSON.parse(response.response);
         if (DEBUG) {
           data = DEBUG_NUKE_DATA;
         }
         nukes = [];
         if (response.status == 200) {
+          let data = JSON.parse(response.response);
           if (data.length > 0) {
             let nukeAlertButtonTooltip = "";
             data.forEach((entry) => {
@@ -1766,11 +1766,11 @@ function injectScript() {
       method: "GET",
       url: "https://vyneer.me/tools/mutelinks",
       onload: (response) => {
-        let data = JSON.parse(response.response);
         if (DEBUG) {
           data = DEBUG_LINKS_DATA;
         }
         if (response.status == 200) {
+          let data = JSON.parse(response.response);
           if (data[0].status == "on") {
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `Links mentioning ${data[0].user} WILL get you muted (${data[0].duration}).`;
