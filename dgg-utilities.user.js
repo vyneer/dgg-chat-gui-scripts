@@ -104,7 +104,7 @@ const configItems = {
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
   stickyMentions    : new ConfigItem("stickyMentions",     false   ),
-  ignorePhrases     : new ConfigItem("ignorePhrases",      []      ),
+  ignorePhrases     : new ConfigItem("ignorePhrases",      false   ),
   ignoredPhraseList : new ConfigItem("ignoredPhraseList",  []      ),
 };
 class Config {
