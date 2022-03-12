@@ -993,7 +993,7 @@ function injectScript() {
   function removeUnusedFlairs() {
     const toRemove = [];
     for (let f of hideFlairsList.children) {
-      if (!getComputedStyle(f).background.includes("flair")) {
+      if (getComputedStyle(f).backgroundImage == "none") {
         toRemove.push(f);
       }
     }
