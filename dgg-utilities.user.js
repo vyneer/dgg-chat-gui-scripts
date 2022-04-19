@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.5.1
+// @version      1.5.2
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -12,6 +12,8 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.5.2 - 2022-04-20
+// * add all strims links
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
 // v1.5 - 2021-11-19
@@ -26,8 +28,6 @@
 // v1.4 - 2021-09-24
 // * added strims.gg/angelthump to the list of embeds (i know it's technically not an embed but i figured it's still worth adding it)
 // * better update system (you can just left click now pog) (technically a server side change)
-// v1.3.2 - 2021-08-30
-// * fix phrases autorefresh not clearing the array
 
 // set to true if you wanna see nuke/mutelinks buttons all the time
 const DEBUG = false;
@@ -577,7 +577,7 @@ class EmbedUrlFormatter {
   constructor() {
     this.bigscreenPath = "/bigscreen";
     this.bigscreenregex = new RegExp(
-      /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|(?:https:\/\/|http:\/\/|)strims\.gg\/angelthump)\/(?:[A-z0-9_\-]{3,64}))\b/,
+      /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
       "g"
     );
 
@@ -747,7 +747,15 @@ class EmbedUrlFormatter {
             break;
         }
         break;
+      case "strims.gg":
       case "strims.gg/angelthump":
+      case "strims.gg/facebook":
+      case "strims.gg/smashcast":
+      case "strims.gg/twitch-vod":
+      case "strims.gg/twitch":
+      case "strims.gg/ustream":
+      case "strims.gg/youtube-playlist":
+      case "strims.gg/youtube":
         return str.replace(
           this.bigscreenregex,
           '$1<a class="externallink bookmarklink" href="https://$2" target="_blank">$2</a>'
