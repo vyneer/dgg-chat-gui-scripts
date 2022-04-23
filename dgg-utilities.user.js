@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         [dev] d.gg utilities
+// @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.04.20
-// @description  [dev] small, but useful tools for both regular dggers and newbies alike
+// @version      1.6
+// @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -17,7 +17,7 @@
 // ==/UserScript==
 
 // ==Changelog==
-// v1.6
+// v1.6 - 2022-04-23
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
 // * add an option to select the embed button icon (thanks Igor for the outline version, thanks Voiture for the SVG version! <3)
