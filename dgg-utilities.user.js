@@ -76,6 +76,10 @@ let phrases = [];
 let nukes = [];
 let foundPhraseOrNuke = false;
 
+let nukesTimestamp = 0;
+let mutelinksTimestamp = 0;
+let phrasesTimestamp = 0;
+
 class ConfigItem {
   constructor(keyName, defaultValue) {
     this.keyName = keyName;
@@ -1514,10 +1518,15 @@ function injectScript() {
     // download the ban/mute phrases to an array
     GM.xmlHttpRequest({
       method: "GET",
-      url: "https://vyneer.me/tools/phrases",
+      url: "https://vyneer.me/tools/phrases?ts=1",
       onload: (response) => {
-        let data = JSON.parse(response.response);
+        let parsedResponse = JSON.parse(response.response);
+        let data = [];
+        if (parsedResponse && parsedResponse.data) {
+          data = parsedResponse.data;
+        }
         if (response.status == 200) {
+          phrasesTimestamp = parsedResponse.updatedAt;
           phrases = [];
           data.forEach((entry) => {
             phrases.push(entry);
@@ -1734,12 +1743,41 @@ function injectScript() {
     });
   }
 
-  // function to check nukes and mutelinks
-  function getNukesAndLinks() {
+  // function to see get latest timestamps of nukes/phrases/mutelinks
+  function getNukesMutesPhrasesTimestamps() {
     GM.xmlHttpRequest({
       method: "GET",
-      url: "https://vyneer.me/tools/nukes",
+      url: "https://vyneer.me/tools/nmptimestamps",
       onload: (response) => {
+        if (response.status == 200) {
+          if (!DEBUG) {
+             data = JSON.parse(response.response);
+          }
+          if (nukesTimestamp !== data.nukesTimestamp) {
+            getNukes();
+          }
+
+          if (mutelinksTimestamp !== data.mutelinksTimestamp) {
+            getMutelinks();
+          }
+
+          if (phrasesTimestamp !== data.phrasesTimestamp) {
+            getPhrases();
+          }
+        } else {
+          console.log(`dgg-utils error, can't get nukes/mutelinks/phrases data - ${response.status}`);
+        }
+      }
+    });
+  }
+
+  // function to get nukes
+  function getNukes() {
+    GM.xmlHttpRequest({
+      method: "GET",
+      url: "https://vyneer.me/tools/nukes?ts=1",
+      onload: (response) => {
+        let parsedResponse = {};
         let data = [];
         if (DEBUG) {
           data = DEBUG_NUKE_DATA;
@@ -1747,8 +1785,12 @@ function injectScript() {
         nukes = [];
         if (response.status == 200) {
           if (!DEBUG) {
-             data = JSON.parse(response.response);
+            parsedResponse = JSON.parse(response.response);
+            if (parsedResponse && parsedResponse.data) {
+              data = parsedResponse.data;
+            }
           }
+          nukesTimestamp = parsedResponse.updatedAt;
           if (data.length > 0) {
             let nukeAlertButtonTooltip = "";
             data.forEach((entry) => {
@@ -1775,20 +1817,28 @@ function injectScript() {
         }
       },
     });
+  }
 
+  // function to get nukes and mutelinks
+  function getMutelinks() {
     GM.xmlHttpRequest({
       method: "GET",
-      url: "https://vyneer.me/tools/mutelinks",
+      url: "https://vyneer.me/tools/mutelinks?ts=1",
       onload: (response) => {
+        let parsedResponse = {};
         let data = [];
         if (DEBUG) {
           data = DEBUG_LINKS_DATA;
         }
         if (response.status == 200) {
           if (!DEBUG) {
-             data = JSON.parse(response.response);
+            parsedResponse = JSON.parse(response.response);
+            if (parsedResponse && parsedResponse.data) {
+              data = parsedResponse.data;
+            }
           }
-          if (data[0].status == "on") {
+          mutelinksTimestamp = parsedResponse.updatedAt;
+          if (data[0] && data[0].status == "on") {
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `Links mentioning ${data[0].user} WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "on";
@@ -1798,7 +1848,7 @@ function injectScript() {
                 `#${mutelinksColorArea.value}`
               );
             }
-          } else if (data[0].status == "all") {
+          } else if (data[0] && data[0].status == "all") {
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `ANY link WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "all";
@@ -1808,7 +1858,7 @@ function injectScript() {
                 `#${mutelinksColorArea.value}`
               );
             }
-          } else if (data[0].status == "off") {
+          } else if (data[0] && data[0].status == "off") {
             if (linksAlertButton.style.display != "none") {
               linksAlertButton.style.display = "none";
               linksAlertButton.title = "Mutelinks";
@@ -1826,11 +1876,11 @@ function injectScript() {
     });
   }
 
-  getNukesAndLinks();
+  getNukes();
+  getMutelinks();
 
   setInterval(() => {
-    getNukesAndLinks();
-    getPhrases();
+    getNukesMutesPhrasesTimestamps();
   }, 15000);
 
   // make an observer move nuke/mutelinks buttons based on amount of whispers
