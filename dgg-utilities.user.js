@@ -240,7 +240,7 @@ function injectScript() {
             // if the API shows there's an update, show a message
             GM.xmlHttpRequest({
               method: "GET",
-              url: "https://vyneer.me/tools/script/dev",
+              url: "https://vyneer.me/tools/script",
               onload: (response) => {
                 let data = JSON.parse(response.response);
                 if ("link" in data && "version" in data) {
