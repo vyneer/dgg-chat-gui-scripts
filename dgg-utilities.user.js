@@ -754,10 +754,10 @@ function injectScript() {
   phraseColorArea.addEventListener("change", () => {
     if (phraseColorArea.value.length > 0) {
       config.phraseColor = phraseColorArea.value;
-      phraseColorArea.style.backgroundColor = `#${config.phraseColor}`;
     } else {
       config.phraseColor = configItems.phraseColor.defaultValue;
     }
+    phraseColorArea.style.backgroundColor = `#${config.phraseColor}`;
   });
   phraseColorGroup.appendChild(phraseColorArea);
 
@@ -782,10 +782,10 @@ function injectScript() {
   nukeColorArea.addEventListener("change", () => {
     if (nukeColorArea.value.length > 0) {
       config.nukeColor = nukeColorArea.value;
-      nukeColorArea.style.backgroundColor = `#${config.nukeColor}`;
     } else {
       config.nukeColor = configItems.nukeColor.defaultValue;
     }
+    nukeColorArea.style.backgroundColor = `#${config.nukeColor}`;
   });
   nukeColorGroup.appendChild(nukeColorArea);
 
@@ -833,10 +833,10 @@ function injectScript() {
   mutelinksColorArea.addEventListener("change", () => {
     if (mutelinksColorArea.value.length > 0) {
       config.mutelinksColor = mutelinksColorArea.value;
-      mutelinksColorArea.style.backgroundColor = `#${config.mutelinksColor}`;
     } else {
       config.mutelinksColor = configItems.mutelinksColor.defaultValue;
     }
+    mutelinksColorArea.style.backgroundColor = `#${config.mutelinksColor}`;
   });
   mutelinksColorGroup.appendChild(mutelinksColorArea);
 
@@ -885,10 +885,10 @@ function injectScript() {
   customColorArea.addEventListener("change", () => {
     if (customColorArea.value.length > 0) {
       config.customColor = customColorArea.value;
-      customColorArea.style.backgroundColor = `#${config.customColor}`;
     } else {
       config.customColor = configItems.customColor.defaultValue;
     }
+    customColorArea.style.backgroundColor = `#${config.customColor}`;
   });
   customColorGroup.appendChild(customColorArea);
 
