@@ -986,6 +986,8 @@ function injectScript() {
     for (let i = 1; i <= 50; i++) {
       flairIds.push(`flair${i}`);
     }
+    // Add other flair names
+    flairIds.push("bot");
     return flairIds;
   }
   // removes any flairs, previously created, that don't have style rules associated with them
