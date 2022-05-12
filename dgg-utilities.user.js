@@ -86,7 +86,8 @@ const configItems = {
   alwaysScrollDown  : new ConfigItem("alwaysScrollDown",   true    ),
   changeTitleOnLive : new ConfigItem("changeTitleOnLive",  false   ),
   embedIconStyle    : new ConfigItem("embedIconStyle",     1       ),
-  doubleClickCopy   : new ConfigItem("doubleClickCopy",    false   ),
+  dblClickUser      : new ConfigItem("dblClickUser",       false   ),
+  dblClickEmote     : new ConfigItem("dblClickEmote",      false   ),
   embedsOnLaunch    : new ConfigItem("embedsOnLaunch",     false   ),
   lastEmbeds        : new ConfigItem("lastEmbeds",         false   ),
   lastIfNone        : new ConfigItem("lastIfNone",         false   ),
@@ -427,51 +428,92 @@ function injectScript() {
       element.classList.contains("chat-user")
     );
   }
-
-  function doubleClickCopyListener(event) {
+  function isEmote(element) {
+    return element.classList.contains("emote");
+  }
+  
+  function dblClickUserListener(event) {
     const target = event.target;
-
-    if (!isUsername(target)) {
-      return;
+    if (isUsername(target)) {
+      const username = target.text || target.textContent;
+      addToChatBox(username);
     }
+  }
 
-    const username = target.text || target.textContent;
-
-    // if the chat input has some text, and the last character isn't already a space
-    if (
-      textarea.value.length > 0 &&
-      textarea.value.charAt(textarea.value.length - 1) != " "
-    ) {
-      textarea.value += " ";
+  function dblClickEmoteListener(event) {
+    const target = event.target;
+    if (isEmote(target)) {
+      const emote = target.text || target.textContent;
+      addToChatBox(emote);
     }
+  }
 
-    textarea.value += `${username} `;
+  // Adds text to the chat input box, respecting the user's cursor and selection
+  function addToChatBox(str) {
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const messageStart = textarea.value.substr(0, selectionStart);
+    const messageEnd = textarea.value.substr(selectionEnd);
+    const newMessageStart = (messageStart === "" ? "" : messageStart.trimEnd() + " ") + str.trim() + " ";
+    const message = newMessageStart + messageEnd.trimStart();
+    textarea.value = message;
+    
+    // Reset cursor position
+    textarea.focus();
+    const cursorPosition = newMessageStart.length;
+    textarea.selectionStart = cursorPosition;
+    textarea.selectionEnd = cursorPosition;
   }
 
   // creating a double click to copy setting
-  let doubleClickCopyGroup = document.createElement("div");
-  doubleClickCopyGroup.className = "form-group checkbox";
-  let doubleClickCopyLabel = document.createElement("label");
-  doubleClickCopyLabel.innerHTML =
+  let dblClickUserGroup = document.createElement("div");
+  dblClickUserGroup.className = "form-group checkbox";
+  let dblClickUserLabel = document.createElement("label");
+  dblClickUserLabel.innerHTML =
     "Double click username to append it to chat input";
-  doubleClickCopyGroup.appendChild(doubleClickCopyLabel);
-  let doubleClickCopyCheck = document.createElement("input");
-  doubleClickCopyCheck.name = "doubleClickCopy";
-  doubleClickCopyCheck.type = "checkbox";
-  doubleClickCopyCheck.checked = config.doubleClickCopy;
-  doubleClickCopyCheck.addEventListener("change", () => {
-    config.doubleClickCopy = doubleClickCopyCheck.checked;
-    window.removeEventListener("dblclick", doubleClickCopyListener);
-    if (config.doubleClickCopy) {
+  dblClickUserGroup.appendChild(dblClickUserLabel);
+  let dblClickUserCheck = document.createElement("input");
+  dblClickUserCheck.name = "dblClickUser";
+  dblClickUserCheck.type = "checkbox";
+  dblClickUserCheck.checked = config.dblClickUser;
+  dblClickUserCheck.addEventListener("change", () => {
+    config.dblClickUser = dblClickUserCheck.checked;
+    window.removeEventListener("dblclick", dblClickUserListener);
+    if (config.dblClickUser) {
       // if a username is double clicked copy it to the chat input
-      window.addEventListener("dblclick", doubleClickCopyListener);
+      window.addEventListener("dblclick", dblClickUserListener);
     }
   });
-  if (config.doubleClickCopy) {
+  if (config.dblClickUser) {
     // if a username is double clicked copy it to the chat input
-    window.addEventListener("dblclick", doubleClickCopyListener);
+    window.addEventListener("dblclick", dblClickUserListener);
   }
-  doubleClickCopyLabel.prepend(doubleClickCopyCheck);
+  dblClickUserLabel.prepend(dblClickUserCheck);
+  
+  // For double clicking emotes
+  let dblClickEmoteGroup = document.createElement("div");
+  dblClickEmoteGroup.className = "form-group checkbox";
+  let dblClickEmoteLabel = document.createElement("label");
+  dblClickEmoteLabel.innerHTML =
+    "Double click emotes to append it to chat input";
+  dblClickEmoteGroup.appendChild(dblClickEmoteLabel);
+  let dblClickEmoteCheck = document.createElement("input");
+  dblClickEmoteCheck.name = "dblClickEmote";
+  dblClickEmoteCheck.type = "checkbox";
+  dblClickEmoteCheck.checked = config.dblClickEmote;
+  dblClickEmoteCheck.addEventListener("change", () => {
+    config.dblClickEmote = dblClickEmoteCheck.checked;
+    window.removeEventListener("dblclick", dblClickEmoteListener);
+    if (config.dblClickEmote) {
+      // if an emote is double clicked copy it to the chat input
+      window.addEventListener("dblclick", dblClickEmoteListener);
+    }
+  });
+  if (config.dblClickEmote) {
+    // if a username is double clicked copy it to the chat input
+    window.addEventListener("dblclick", dblClickEmoteListener);
+  }
+  dblClickEmoteLabel.prepend(dblClickEmoteCheck);
 
   let ogtitle = window.parent.document.title;
 
@@ -1236,7 +1278,8 @@ function injectScript() {
 
   // appending all the settings to our area
   settingsArea.appendChild(alwaysScrollDownGroup);
-  settingsArea.appendChild(doubleClickCopyGroup);
+  settingsArea.appendChild(dblClickUserGroup);
+  settingsArea.appendChild(dblClickEmoteGroup);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
   settingsArea.appendChild(changeTitleOnLiveGroup);
