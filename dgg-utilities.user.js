@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         [dev] d.gg utilities
+// @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.04.20
-// @description  [dev] small, but useful tools for both regular dggers and newbies alike
+// @version      1.6
+// @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -17,7 +17,7 @@
 // ==/UserScript==
 
 // ==Changelog==
-// v1.6
+// v1.6 - 2022-04-23
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
 // * add an option to select the embed button icon (thanks Igor for the outline version, thanks Voiture for the SVG version! <3)
@@ -240,7 +240,7 @@ function injectScript() {
             // if the API shows there's an update, show a message
             GM.xmlHttpRequest({
               method: "GET",
-              url: "https://vyneer.me/tools/script/dev",
+              url: "https://vyneer.me/tools/script",
               onload: (response) => {
                 let data = JSON.parse(response.response);
                 if ("link" in data && "version" in data) {
@@ -750,12 +750,14 @@ function injectScript() {
   phraseColorArea.value = config.phraseColor;
   phraseColorArea.style.marginLeft = ".6em";
   phraseColorArea.style.width = "60px";
+  phraseColorArea.style.backgroundColor = `#${config.phraseColor}`;
   phraseColorArea.addEventListener("change", () => {
     if (phraseColorArea.value.length > 0) {
       config.phraseColor = phraseColorArea.value;
     } else {
       config.phraseColor = configItems.phraseColor.defaultValue;
     }
+    phraseColorArea.style.backgroundColor = `#${config.phraseColor}`;
   });
   phraseColorGroup.appendChild(phraseColorArea);
 
@@ -776,12 +778,14 @@ function injectScript() {
   nukeColorArea.value = config.nukeColor;
   nukeColorArea.style.marginLeft = ".6em";
   nukeColorArea.style.width = "60px";
+  nukeColorArea.style.backgroundColor = `#${config.nukeColor}`;
   nukeColorArea.addEventListener("change", () => {
     if (nukeColorArea.value.length > 0) {
       config.nukeColor = nukeColorArea.value;
     } else {
       config.nukeColor = configItems.nukeColor.defaultValue;
     }
+    nukeColorArea.style.backgroundColor = `#${config.nukeColor}`;
   });
   nukeColorGroup.appendChild(nukeColorArea);
 
@@ -825,12 +829,14 @@ function injectScript() {
   mutelinksColorArea.value = config.mutelinksColor;
   mutelinksColorArea.style.marginLeft = ".6em";
   mutelinksColorArea.style.width = "60px";
+  mutelinksColorArea.style.backgroundColor = `#${config.mutelinksColor}`;
   mutelinksColorArea.addEventListener("change", () => {
     if (mutelinksColorArea.value.length > 0) {
       config.mutelinksColor = mutelinksColorArea.value;
     } else {
       config.mutelinksColor = configItems.mutelinksColor.defaultValue;
     }
+    mutelinksColorArea.style.backgroundColor = `#${config.mutelinksColor}`;
   });
   mutelinksColorGroup.appendChild(mutelinksColorArea);
 
@@ -875,12 +881,14 @@ function injectScript() {
   customColorArea.value = config.customColor;
   customColorArea.style.marginLeft = ".6em";
   customColorArea.style.width = "60px";
+  customColorArea.style.backgroundColor = `#${config.customColor}`;
   customColorArea.addEventListener("change", () => {
     if (customColorArea.value.length > 0) {
       config.customColor = customColorArea.value;
     } else {
       config.customColor = configItems.customColor.defaultValue;
     }
+    customColorArea.style.backgroundColor = `#${config.customColor}`;
   });
   customColorGroup.appendChild(customColorArea);
 
