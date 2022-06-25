@@ -1522,7 +1522,14 @@ function injectScript() {
         if (response.status == 200) {
           phrases = [];
           data.forEach((entry) => {
-            phrases.push(entry);
+            cleanPhrase = entry.phrase.trim().toLowerCase();
+            if (/^\/.*\/$/.test(cleanPhrase) && cleanPhrase.length > 2) {
+              const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
+              const regex = new RegExp(regexString, "i");
+              phrases.push(regex);
+            } else {
+              phrases.push(entry.phrase);
+            }
           });
         } else {
           console.log(`dgg-utils error, can't get phrases - ${response.status}`);
@@ -1554,33 +1561,45 @@ function injectScript() {
     let result;
 
     if (phrases.length > 0) {
-      result = phrases.find((entry) => {
-        if (matchStringOrRegex(text, entry.phrase)) {
-          return true;
-        } else {
-          return false;
+      for (let entry of phrases) {
+	      if (typeof(entry) === 'string') {
+  	      if (text.indexOf(entry) != -1) {
+    	      result = true;
+            break;
         }
-      });
+        } else {
+  	      if (entry.test(text)) {
+    	      result = true;
+            break;
+          }
+        } 
+      }
     }
 
     if (nukes.length > 0) {
-      resultNukes = nukes.find((entry) => {
-        if (matchStringOrRegex(text, entry.word)) {
-          return true;
-        } else {
-          return false;
+      for (let entry of nukes) {
+	      if (typeof(entry) === 'string') {
+  	      if (text.indexOf(entry) != -1) {
+    	      resultNukes = true;
+            break;
         }
-      });
+        } else {
+  	      if (entry.test(text)) {
+    	      resultNukes = true;
+            break;
+          }
+        } 
+      }
+    }
     }
 
     if (config.customPhrases.length > 0) {
-      resultCustom = config.customPhrases.find((entry) => {
-        if (text.includes(entry)) {
-          return true;
-        } else {
-          return false;
+      for (let entry of config.customPhrases) {
+	      if (text.indexOf(entry) != -1) {
+          resultCustom = true;
+          break;
         }
-      });
+      }
     }
 
     if (result != undefined) {
@@ -1755,7 +1774,14 @@ function injectScript() {
             let nukeAlertButtonTooltip = "";
             data.forEach((entry) => {
               nukeAlertButtonTooltip += `${entry.word} (${entry.type} for ${entry.duration})\n`;
-              nukes.push(entry);
+              cleanNuke = entry.word.trim().toLowerCase();
+              if (/^\/.*\/$/.test(cleanNuke) && cleanNuke.length > 2) {
+                const regexString = cleanNuke.slice(1, cleanNuke.length - 1);
+                const regex = new RegExp(regexString, "i");
+                nukes.push(regex);
+              } else {
+                nukes.push(entry.word);
+              }
             });
             nukeAlertButton.style.display = "";
             if (nukeAlertButtonTooltip) {
