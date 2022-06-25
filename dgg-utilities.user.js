@@ -72,8 +72,29 @@ const timeOptions = {
   minute: "2-digit",
 };
 
+const mutelinksChecklist = [
+  "https://",
+  "http://",
+  "www.",
+  ".com",
+  ".org",
+  ".ru",
+  ".net",
+  ".uk",
+  ".au",
+  ".in",
+  ".de",
+  ".ir",
+  ".ca",
+  ".gov",
+  ".be",
+  ".tv",
+  ".it"
+];
+
 let phrases = [];
 let nukes = [];
+let mutelinks = false;
 let foundPhraseOrNuke = false;
 
 class ConfigItem {
@@ -212,18 +233,6 @@ function injectScript() {
   }`;
   alertAnimationStyle.innerHTML = keyFrames;
   document.head.appendChild(alertAnimationStyle);
-
-  let mutelinksColorStyle = document.createElement("style");
-  let colorStyle = `
-  :root {
-    --mutelinks-color: #111;
-  }
-
-  #chat-input-control {
-    background-color: var(--mutelinks-color);
-  }`;
-  mutelinksColorStyle.innerHTML = colorStyle;
-  mutelinksColorStyle.id = "mutelinksColorStyle";
 
   // make an observer to show an update message after the "connected" alert in chat
   let updateObserver = new MutationObserver((mutations) => {
@@ -785,27 +794,19 @@ function injectScript() {
   });
   nukeColorGroup.appendChild(nukeColorArea);
 
-  // creating a setting to prevent enter from working if you have a banned phrase in the message
+  // creating a setting to color the textarea if mutelinks is on and you typed a link
   let colorOnMutelinksGroup = document.createElement("div");
   colorOnMutelinksGroup.className = "form-group checkbox";
   let colorOnMutelinksLabel = document.createElement("label");
-  colorOnMutelinksLabel.innerHTML = "Color the text area if mutelinks is on";
+  colorOnMutelinksLabel.innerHTML = "Color the text area if you type a link when mutelinks is on (not every link gets detected)";
+  colorOnMutelinksLabel.title =
+    "Keep in mind that it doesn't detect every single possible link, so be careful anyway";
   colorOnMutelinksGroup.appendChild(colorOnMutelinksLabel);
   let colorOnMutelinksCheck = document.createElement("input");
   colorOnMutelinksCheck.name = "colorOnMutelinks";
   colorOnMutelinksCheck.type = "checkbox";
   colorOnMutelinksCheck.checked = config.colorOnMutelinks;
-  colorOnMutelinksCheck.addEventListener("change", () => {
-    config.colorOnMutelinks = colorOnMutelinksCheck.checked;
-    if (config.colorOnMutelinks) {
-      document.head.appendChild(mutelinksColorStyle);
-    } else {
-      document.querySelector("#mutelinksColorStyle").remove();
-    }
-  });
-  if (config.colorOnMutelinks) {
-    document.head.appendChild(mutelinksColorStyle);
-  }
+  colorOnMutelinksCheck.addEventListener("change", () => config.colorOnMutelinks = colorOnMutelinksCheck.checked);
   colorOnMutelinksLabel.prepend(colorOnMutelinksCheck);
 
   // creating an phrase textarea color setting
@@ -1557,6 +1558,7 @@ function injectScript() {
   textarea.addEventListener("keyup", () => {
     let text = textarea.value.toLowerCase();
     let resultCustom;
+    let resultLinks;
     let resultNukes;
     let result;
 
@@ -1591,6 +1593,14 @@ function injectScript() {
         } 
       }
     }
+
+    if (mutelinks && config.colorOnMutelinks) {
+      for (let entry of mutelinksChecklist) {
+	      if (text.indexOf(entry) != -1) {
+          resultLinks = true;
+          break;
+        }
+      }
     }
 
     if (config.customPhrases.length > 0) {
@@ -1606,6 +1616,13 @@ function injectScript() {
       foundPhraseOrNuke = true;
       textarea.style.backgroundColor = `#${config.phraseColor}`;
       document.body.style.setProperty("--flashing-color", `#${config.phraseColor}`);
+      if (config.preventEnter) {
+        sendAnywayButton.style.display = "";
+      }
+    } else if (resultLinks != undefined) {
+      foundPhraseOrNuke = true;
+      textarea.style.backgroundColor = `#${config.mutelinksColor}`;
+      document.body.style.setProperty("--flashing-color", `#${config.mutelinksColor}`);
       if (config.preventEnter) {
         sendAnywayButton.style.display = "";
       }
@@ -1817,32 +1834,20 @@ function injectScript() {
              data = JSON.parse(response.response);
           }
           if (data[0].status == "on") {
+            mutelinks = true;
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `Links mentioning ${data[0].user} WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "on";
-            if (config.colorOnMutelinks) {
-              document.body.style.setProperty(
-                "--mutelinks-color",
-                `#${mutelinksColorArea.value}`
-              );
-            }
           } else if (data[0].status == "all") {
+            mutelinks = true;
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `ANY link WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "all";
-            if (config.colorOnMutelinks) {
-              document.body.style.setProperty(
-                "--mutelinks-color",
-                `#${mutelinksColorArea.value}`
-              );
-            }
           } else if (data[0].status == "off") {
+            mutelinks = false;
             if (linksAlertButton.style.display != "none") {
               linksAlertButton.style.display = "none";
               linksAlertButton.title = "Mutelinks";
-            }
-            if (config.colorOnMutelinks) {
-              document.body.style.setProperty("--mutelinks-color", `#111`);
             }
           }
         } else {
