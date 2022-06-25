@@ -88,6 +88,7 @@ const configItems = {
   embedIconStyle    : new ConfigItem("embedIconStyle",     1       ),
   doubleClickCopy   : new ConfigItem("doubleClickCopy",    false   ),
   embedsOnLaunch    : new ConfigItem("embedsOnLaunch",     false   ),
+  showLastVOD       : new ConfigItem("showLastVOD",        false   ),
   lastEmbeds        : new ConfigItem("lastEmbeds",         false   ),
   lastIfNone        : new ConfigItem("lastIfNone",         false   ),
   embedTime         : new ConfigItem("embedTime",          30      ),
@@ -598,6 +599,19 @@ function injectScript() {
   });
 
   embedIconStyleGroup.appendChild(embedIconStyleSelect);
+
+  // creating a show last steve vod setting
+  let showLastVODGroup = document.createElement("div");
+  showLastVODGroup.className = "form-group checkbox";
+  let showLastVODLabel = document.createElement("label");
+  showLastVODLabel.innerHTML = "Show Destiny's last vod when you check embeds";
+  showLastVODGroup.appendChild(showLastVODLabel);
+  let showLastVODCheck = document.createElement("input");
+  showLastVODCheck.name = "showLastVOD";
+  showLastVODCheck.type = "checkbox";
+  showLastVODCheck.checked = config.showLastVOD;
+  showLastVODCheck.addEventListener("change", () => config.showLastVOD = showLastVODCheck.checked);
+  showLastVODLabel.prepend(showLastVODCheck);
 
   // creating a show embeds on connect setting
   let embedsOnLaunchGroup = document.createElement("div");
@@ -1244,6 +1258,7 @@ function injectScript() {
   settingsArea.appendChild(embedIconStyleGroup);
   settingsArea.appendChild(hideFlairsGroup);
   settingsArea.appendChild(embedsTitle);
+  settingsArea.appendChild(showLastVODGroup);
   settingsArea.appendChild(embedsOnLaunchGroup);
   settingsArea.appendChild(lastEmbedsGroup);
   settingsArea.appendChild(lastIfNoneGroup);
@@ -1727,11 +1742,43 @@ function injectScript() {
       method: "GET",
       url: embedUrl,
       onload: (response) => {
-        let data = JSON.parse(response.response);
+        let embedData = JSON.parse(response.response);
         if (config.lastEmbeds) {
-          data = data.reverse();
+          embedData = embedData.reverse();
         }
-        serveEmbeds(data, config.lastEmbeds, config.lastIfNone);
+        if (config.showLastVOD) {
+          GM.xmlHttpRequest({
+            method: "GET",
+            url: "https://vyneer.me/tools/ytvods",
+            onload: (response) => {
+              let vodData = [];
+              if (response.status == 200) {
+                vodData = JSON.parse(response.response);
+                if (vodData.length > 0) {
+                  new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "");
+                } else {
+                  console.error(`dgg-utils error - couldn't get the VOD data (the VOD db is empty)`);
+                }
+              } else {
+                console.error(`dgg-utils error - couldn't get the VOD data (status code: ${response.status})`);
+              }
+
+              if (config.alwaysScrollDown) {
+                chatlines.scrollTop = chatlines.scrollHeight;
+              } else {
+                if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+                  chatlines.scrollTop = chatlines.scrollHeight;
+                } else {
+                  chatlines.scrollLeft = chatlines.scrollWidth;
+                }
+              }
+
+              serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+            },
+          });
+        } else {
+          serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+        }
       },
     });
   }
