@@ -1548,115 +1548,125 @@ function injectScript() {
   }
 
   getPhrases();
+  
+  function textScanner(event) {
+    // ensure we dont fire on random empty keypresses
+    if (!(event.code == "ControlLeft" || event.code == "ControlRight" || event.code == "AltLeft" || event.code == "AltRight" || event.code == "ShiftLeft" || event.code == "ShiftRight" || event.code == "MetaLeft" || event.code == "MetaRight")) {
+      let text = textarea.value.toLowerCase();
+      let resultCustom;
+      let resultLinks;
+      let resultNukes;
+      let result;
 
-  const matchStringOrRegex = (message, phrase) => {
-    const cleanMessage = message.trim();
-    const cleanPhrase = phrase.trim().toLowerCase();
-    if (/^\/.*\/$/.test(cleanPhrase)) {
-      const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
-      if (cleanPhrase.length <= 2) return false;
-      const regex = new RegExp(regexString, "i");
-      return regex.test(cleanMessage);
+      if (phrases.length > 0) {
+        for (let entry of phrases) {
+          if (typeof(entry) === 'string') {
+            if (text.indexOf(entry) != -1) {
+              result = true;
+              break;
+          }
+          } else {
+            if (entry.test(text)) {
+              result = true;
+              break;
+            }
+          } 
+        }
+      }
+
+      if (nukes.length > 0) {
+        for (let entry of nukes) {
+          if (typeof(entry) === 'string') {
+            if (text.indexOf(entry) != -1) {
+              resultNukes = true;
+              break;
+          }
+          } else {
+            if (entry.test(text)) {
+              resultNukes = true;
+              break;
+            }
+          } 
+        }
+      }
+
+      if (mutelinks && config.colorOnMutelinks) {
+        for (let entry of mutelinksChecklist) {
+          if (text.indexOf(entry) != -1) {
+            resultLinks = true;
+            break;
+          }
+        }
+      }
+
+      if (config.customPhrases.length > 0) {
+        for (let entry of config.customPhrases) {
+          if (text.indexOf(entry) != -1) {
+            resultCustom = true;
+            break;
+          }
+        }
+      }
+
+      if (result != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.phraseColor}`;
+        document.body.style.setProperty("--flashing-color", `#${config.phraseColor}`);
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "";
+        }
+      } else if (resultLinks != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.mutelinksColor}`;
+        document.body.style.setProperty("--flashing-color", `#${config.mutelinksColor}`);
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "";
+        }
+      } else if (resultCustom != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.customColor}`;
+        document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "";
+        }
+      } else if (resultNukes != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.nukeColor}`;
+        document.body.style.setProperty("--flashing-color", `#${config.nukeColor}`);
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "";
+        }
+      } else {
+        foundPhraseOrNuke = false;
+        if (textarea.style.backgroundColor != "") {
+          textarea.style.backgroundColor = "";
+        }
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "none";
+        }
+      }
     }
-    return message.includes(cleanPhrase);
-  };
+  }
 
+  let pasted = false;
+
+  // next 2 event listeners are for detecting pastes
+  // because right-click -> paste doesnt get detected by keyup
+  textarea.addEventListener("paste", () => {
+    pasted = true;
+  });
+  
+  textarea.addEventListener("input", (e) => {
+    if (pasted) {
+      textScanner(e);
+      pasted = false;
+    }
+  });
+  
   // adding an event listener to chat's input box
   // every time you press a key it checks whether your text has spooky phrases in it
-  textarea.addEventListener("keyup", () => {
-    let text = textarea.value.toLowerCase();
-    let resultCustom;
-    let resultLinks;
-    let resultNukes;
-    let result;
-
-    if (phrases.length > 0) {
-      for (let entry of phrases) {
-	      if (typeof(entry) === 'string') {
-  	      if (text.indexOf(entry) != -1) {
-    	      result = true;
-            break;
-        }
-        } else {
-  	      if (entry.test(text)) {
-    	      result = true;
-            break;
-          }
-        } 
-      }
-    }
-
-    if (nukes.length > 0) {
-      for (let entry of nukes) {
-	      if (typeof(entry) === 'string') {
-  	      if (text.indexOf(entry) != -1) {
-    	      resultNukes = true;
-            break;
-        }
-        } else {
-  	      if (entry.test(text)) {
-    	      resultNukes = true;
-            break;
-          }
-        } 
-      }
-    }
-
-    if (mutelinks && config.colorOnMutelinks) {
-      for (let entry of mutelinksChecklist) {
-	      if (text.indexOf(entry) != -1) {
-          resultLinks = true;
-          break;
-        }
-      }
-    }
-
-    if (config.customPhrases.length > 0) {
-      for (let entry of config.customPhrases) {
-	      if (text.indexOf(entry) != -1) {
-          resultCustom = true;
-          break;
-        }
-      }
-    }
-
-    if (result != undefined) {
-      foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${config.phraseColor}`;
-      document.body.style.setProperty("--flashing-color", `#${config.phraseColor}`);
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "";
-      }
-    } else if (resultLinks != undefined) {
-      foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${config.mutelinksColor}`;
-      document.body.style.setProperty("--flashing-color", `#${config.mutelinksColor}`);
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "";
-      }
-    } else if (resultCustom != undefined) {
-      foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${config.customColor}`;
-      document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "";
-      }
-    } else if (resultNukes != undefined) {
-      foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${config.nukeColor}`;
-      document.body.style.setProperty("--flashing-color", `#${config.nukeColor}`);
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "";
-      }
-    } else {
-      foundPhraseOrNuke = false;
-      if (textarea.style.backgroundColor != "") {
-        textarea.style.backgroundColor = "";
-      }
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "none";
-      }
-    }
+  textarea.addEventListener("keyup", (e) => {
+      textScanner(e);
   });
 
   // function to simplify appending embeds
