@@ -764,9 +764,11 @@ function injectScript() {
   phraseColorArea.value = config.phraseColor;
   phraseColorArea.style.marginLeft = ".6em";
   phraseColorArea.style.width = "60px";
+  phraseColorArea.style.backgroundColor = `#${config.phraseColor}`;
   phraseColorArea.addEventListener("change", () => {
     if (phraseColorArea.value.length > 0) {
       config.phraseColor = phraseColorArea.value;
+		phraseColorArea.style.backgroundColor = `#${config.phraseColor}`;
     } else {
       config.phraseColor = configItems.phraseColor.defaultValue;
     }
@@ -790,9 +792,11 @@ function injectScript() {
   nukeColorArea.value = config.nukeColor;
   nukeColorArea.style.marginLeft = ".6em";
   nukeColorArea.style.width = "60px";
+  nukeColorArea.style.backgroundColor = `#${config.nukeColor}`;
   nukeColorArea.addEventListener("change", () => {
     if (nukeColorArea.value.length > 0) {
       config.nukeColor = nukeColorArea.value;
+		nukeColorArea.style.backgroundColor = `#${config.nukeColor}`;
     } else {
       config.nukeColor = configItems.nukeColor.defaultValue;
     }
@@ -839,9 +843,11 @@ function injectScript() {
   mutelinksColorArea.value = config.mutelinksColor;
   mutelinksColorArea.style.marginLeft = ".6em";
   mutelinksColorArea.style.width = "60px";
+  mutelinksColorArea.style.backgroundColor = `#${config.mutelinksColor}`;
   mutelinksColorArea.addEventListener("change", () => {
     if (mutelinksColorArea.value.length > 0) {
       config.mutelinksColor = mutelinksColorArea.value;
+		mutelinksColorArea.style.backgroundColor = `#${config.mutelinksColor}`;
     } else {
       config.mutelinksColor = configItems.mutelinksColor.defaultValue;
     }
@@ -889,9 +895,11 @@ function injectScript() {
   customColorArea.value = config.customColor;
   customColorArea.style.marginLeft = ".6em";
   customColorArea.style.width = "60px";
+  customColorArea.style.backgroundColor = `#${config.customColor}`;
   customColorArea.addEventListener("change", () => {
     if (customColorArea.value.length > 0) {
       config.customColor = customColorArea.value;
+		customColorArea.style.backgroundColor = `#${config.customColor}`;
     } else {
       config.customColor = configItems.customColor.defaultValue;
     }
