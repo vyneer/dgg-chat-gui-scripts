@@ -1157,6 +1157,9 @@ function injectScript() {
       position: sticky;
       top: 0px;
       z-index: 121;
+      border-bottom-style: inset;
+      border-bottom-width: 2px;
+      border-bottom-color: #080808;
     }
   `;
   toggleStickyMentions(config.stickyMentions);
