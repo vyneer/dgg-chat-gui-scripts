@@ -405,7 +405,7 @@ function injectScript() {
   if (config.embedIconStyle !== 1) {
     embedsButton_i.innerHTML = "🎬";
   } else {
-    embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3Csvg viewBox='9 5 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' stroke='white' d='M10,10 l0,-1 l7,-3 l0,1 l-7,3 l0,5 l7,0 l0,-5 l-7,0' /%3E%3C/svg%3E")`;
+    embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3C%3Fxml version='1.0' encoding='UTF-8' standalone='no'%3F%3E%3Csvg width='25' height='25' viewBox='-25 -10 150 150' version='1.1' id='svg5' xml:space='preserve' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg'%3E%3Cdefs id='defs2' /%3E%3Cpath style='opacity:1;fill:%23ffffff;fill-opacity:1;stroke-width:0.406658' d='m 92.631299,98.472455 c 0,3.664485 -3.18611,6.614595 -7.14375,6.614595 H 10.399791 c -3.9576372,0 -7.0776042,-3.01626 -7.0776042,-6.680745 0,-8.21058 0.06729,-51.199364 0.06729,-57.368996 L 92.635479,40.896992' id='lower' /%3E%3Crect style='opacity:1;fill:%23ffffff;fill-opacity:1;stroke-width:0.334081' id='upper' width='89.762489' height='14.542242' x='-6.0129457' y='22.639624' transform='matrix(0.96526009,-0.26129094,0.25636721,0.96657946,0,0)' /%3E%3C/svg%3E%0A")`;
   }
   embedsButton_i.style.fontStyle = "normal";
   embedsButton_i.style.fontSize = "larger";
@@ -737,7 +737,7 @@ function injectScript() {
     switch (config.embedIconStyle) {
       case 1:
         embedsButton_i.innerHTML = "";
-        embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3Csvg viewBox='9 5 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' stroke='white' d='M10,10 l0,-1 l7,-3 l0,1 l-7,3 l0,5 l7,0 l0,-5 l-7,0' /%3E%3C/svg%3E")`;
+        embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3C%3Fxml version='1.0' encoding='UTF-8' standalone='no'%3F%3E%3Csvg width='25' height='25' viewBox='-25 -10 150 150' version='1.1' id='svg5' xml:space='preserve' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg'%3E%3Cdefs id='defs2' /%3E%3Cpath style='opacity:1;fill:%23ffffff;fill-opacity:1;stroke-width:0.406658' d='m 92.631299,98.472455 c 0,3.664485 -3.18611,6.614595 -7.14375,6.614595 H 10.399791 c -3.9576372,0 -7.0776042,-3.01626 -7.0776042,-6.680745 0,-8.21058 0.06729,-51.199364 0.06729,-57.368996 L 92.635479,40.896992' id='lower' /%3E%3Crect style='opacity:1;fill:%23ffffff;fill-opacity:1;stroke-width:0.334081' id='upper' width='89.762489' height='14.542242' x='-6.0129457' y='22.639624' transform='matrix(0.96526009,-0.26129094,0.25636721,0.96657946,0,0)' /%3E%3C/svg%3E%0A")`;
         break;
 
       case 2:
