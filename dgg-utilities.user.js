@@ -216,6 +216,75 @@ function injectScript() {
     console.error(`[NONCRIT] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "change title on live" feature wont work: ${e}`);
   }
 
+  let utilSettingsStyle = document.createElement("style");
+  let utilSettingsStyleString = `
+    #util-settings-btn {
+        width: 95%;
+        height: 32px;
+        color: #B9B9B9;
+        background-color: #030303;
+        margin-left: 2.5%;
+    }
+    
+    #util-settings-btn:hover {
+        cursor: pointer;
+        border: 2px solid #B9B9B9;
+    }
+  
+    #util-settings #util-settings-form {
+        margin: .9em 0;
+    }
+
+    #util-settings .form-group {
+        margin: .9em .9em;
+        display: block;
+        position: relative
+    }
+
+    #util-settings h4 {
+        font-size: 0.9em;
+        margin-top: 1.8em;
+        margin-bottom: .9em;
+        padding-left: .9em;
+        color: #494949;
+        text-transform: uppercase;
+        font-weight: 600
+    }
+
+    #util-settings label {
+        display: inline-block;
+        font-weight: normal;
+        max-width: 100%;
+        margin-bottom: .6em
+    }
+
+    #util-settings .checkbox label {
+        margin-bottom: 0;
+        font-weight: 400;
+        max-width: 100%;
+        cursor: pointer;
+        display: flex;
+        justify-items: center;
+        align-items: center
+    }
+
+    #util-settings .checkbox input {
+        margin: 0 .3em 0 0;
+        line-height: normal;
+        box-sizing: border-box;
+        padding: 0
+    }
+
+    #util-settings select {
+        border-radius: .25em;
+        padding: .3em;
+        width: 100%
+    }
+  `
+  utilSettingsStyle.innerHTML = utilSettingsStyleString;
+  utilSettingsStyle.id = "utilSettingsStyle";
+  document.head.appendChild(utilSettingsStyle);
+
   let alertAnimationStyle = document.createElement("style");
   let keyFrames = `
   :root {
@@ -416,10 +485,89 @@ function injectScript() {
   utilitiesButtons.appendChild(linksAlertButton);
   chatWhispersArea.appendChild(utilitiesButtons);
 
-  // creating a settings title
-  let settingsArea = document.querySelector("#chat-settings-form");
+  // creating the settings page
+  // make sure we only create the nanoscroller once
+  let settingsInit = false;
+  // there's like a billion layers here, very annoying and ugly
+  // this is the main one
+  let utilSettings = document.createElement("div");
+  utilSettings.id = "util-settings";
+  utilSettings.className = "chat-menu right";
+  document.querySelector("#chat").appendChild(utilSettings);
+  // making a button to open the settings menu
+  let settingsButton = document.createElement("button");
+  settingsButton.id = "util-settings-btn";
+  settingsButton.innerHTML = "d.gg utilities settings";
+  settingsButton.addEventListener("click", () => {
+    // it closes the vanilla chat settings menu first (with a click, to avoid doubleclicks later)
+    document.querySelector("#chat-settings-btn").click();
+    // show dgg util settings with a class change
+    utilSettings.classList.toggle("active");
+    // if we havent opened the dgg utils settings pane before, make it scrollable with the nanoscroller thing 
+    if (!settingsInit) {
+      settingsInit = true;
+      $("#util-settings .nano").nanoScroller();
+    }
+  })
+  // make sure we close the settings pane when we click on any of the other buttons in the bottom panel
+  document.querySelectorAll("#chat-emoticon-btn, #chat-whisper-btn, #chat-settings-btn, #chat-users-btn").forEach((el) => {
+    el.addEventListener("click", () => {
+      if (utilSettings.classList.contains("active")) {
+        utilSettings.classList.remove("active");
+      }
+    })
+  })
+  // make sure we close the settings pane when we click on the bottom panel itself
+  document.querySelector("#chat-tools-wrap").addEventListener("click", () => {
+    if (utilSettings.classList.contains("active")) {
+      utilSettings.classList.remove("active");
+    }
+  })
+  // make sure we close the settings pane when we click on chat
+  document.querySelector("#chat-output-frame").addEventListener("click", () => {
+    if (utilSettings.classList.contains("active")) {
+      utilSettings.classList.remove("active");
+    }
+  })
+  // append the button
+  document.querySelector("#chat-settings-form").appendChild(settingsButton);
+  // another layer...
+  let settingsAreaOuter = document.createElement("div");
+  settingsAreaOuter.className = "chat-menu-inner";
+  // create the toolbar
+  let utilToolbar = document.createElement("div");
+  utilToolbar.className = "toolbar";
+  let utilToolbarInner = document.createElement("h5");
+  let utilToolbarInnerTitle = document.createElement("span");
+  utilToolbarInnerTitle.innerHTML = `d.gg utilities v${GM_info.script.version}`;
+  utilToolbarInner.appendChild(utilToolbarInnerTitle);
+  // create the toolbar close button
+  let utilToolbarInnerClose = document.createElement("i");
+  utilToolbarInnerClose.className = "chat-menu-close";
+  // close the settings pane when clicking on the button
+  utilToolbarInnerClose.addEventListener("click", () => {
+    utilSettings.classList.remove("active");
+  })
+  utilToolbarInner.appendChild(utilToolbarInnerClose);
+  utilToolbar.appendChild(utilToolbarInner);
+  settingsAreaOuter.appendChild(utilToolbar);
+  // combined nanoscroller layer
+  let nano = document.createElement("div");
+  nano.className = "scrollable nano has-scrollbar";
+  settingsAreaOuter.appendChild(nano);
+  // content layer
+  let nanoContent = document.createElement("div");
+  nanoContent.className = "content nano-content";
+  nanoContent.tabIndex = "0";
+  nanoContent.style = "right: -17px;";
+  nano.appendChild(nanoContent);
+  // finally, our settings area
+  let settingsArea = document.createElement("div");
+  settingsArea.id = "util-settings-form";
+  nanoContent.appendChild(settingsArea);
+  utilSettings.appendChild(settingsAreaOuter);
   let title = document.createElement("h4");
-  title.innerHTML = `d.gg utilities v${GM_info.script.version}`;
+  title.innerHTML = `Utilities General Settings`;
   // appending it to the settings menu
   settingsArea.appendChild(title);
 
