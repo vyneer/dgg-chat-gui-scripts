@@ -206,9 +206,15 @@ function injectScript() {
   let chatlines = document.querySelector(".chat-lines");
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
-  let livePill = !window.parent.location.href.includes("embed")
+  let livePill = undefined;
+  
+  try {
+    livePill = !window.parent.location.href.includes("embed")
     ? window.parent.document.querySelector("#host-pill-type")
-    : undefined;
+    : undefined
+  } catch (e) {
+    console.error(`[NONCRIT] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "change title on live" feature wont work: ${e}`);
+  }
 
   let alertAnimationStyle = document.createElement("style");
   let keyFrames = `
@@ -483,7 +489,12 @@ function injectScript() {
   }
   doubleClickCopyLabel.prepend(doubleClickCopyCheck);
 
-  let ogtitle = window.parent.document.title;
+  let ogtitle = undefined;
+  try {
+    ogtitle = window.parent.document.title;
+  } catch (e) {
+    console.error(`[NONCRIT] [dgg-utils] script might be running in cross-origin frame, can't get the og title of the stream, the "change title on live" feature wont work: ${e}`)
+  }
 
   let checkLive = (node) => {
     if (node.textContent === "LIVE") {
@@ -1339,7 +1350,8 @@ function injectScript() {
           (location.search ? location.search : "")
         ).replace(/\/$/, "");
       } catch (e) {
-        console.error(e);
+        console.error(`[NONCRIT] [dgg-utils] script might be running in cross-origin frame, can't get the bigscreen url, setting it to "https://www.destiny.gg/bigscreen": ${e}`);
+        this.url = "https://www.destiny.gg/bigscreen"
       }
     }
 
