@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.04.20
+// @version      dev-2022.07.03
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -17,7 +17,16 @@
 // ==/UserScript==
 
 // ==Changelog==
-// v1.6
+// v1.7
+// * move all the settings into a custom menu
+// * speedup banned phrase detection
+// * better mutelinks mode support (now detects SOME links in your messages!)
+// * message gets scanned on context menu paste now as well
+// * add a feature to show destiny's last vod on embed check
+// * slight sticky mentions visibility improvement
+// * script should work on strims.gg now
+// * new svg icon
+// v1.6 - 2022-04-23
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
 // * add an option to select the embed button icon (thanks Igor for the outline version, thanks Voiture for the SVG version! <3)
@@ -39,9 +48,6 @@
 // * add an option to see title of twitch embeds
 // * now shows the nuked phrases when you hover over the nuke button
 // * set saturation of embed icon to 0 (because win 11 made the emoji purple MMMM)
-// v1.4.1 - 2021-10-13
-// * fix mutelinks icon not moving based on the amount of whispers
-// * replace vars with lets
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
