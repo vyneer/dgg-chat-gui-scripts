@@ -100,6 +100,7 @@ const mutelinksChecklist = [
 
 let phrases = [];
 let nukes = [];
+let nukesCompiled = [];
 let mutelinks = false;
 let foundPhraseOrNuke = false;
 
@@ -1758,8 +1759,8 @@ function injectScript() {
         }
       }
 
-      if (nukes.length > 0) {
-        for (let entry of nukes) {
+      if (nukesCompiled.length > 0) {
+        for (let entry of nukesCompiled) {
           if (typeof(entry) === 'string') {
             if (text.indexOf(entry) != -1) {
               resultNukes = true;
@@ -2017,6 +2018,7 @@ function injectScript() {
           data = DEBUG_NUKE_DATA;
         }
         nukes = [];
+        nukesCompiled = [];
         if (response.status == 200) {
           if (!DEBUG) {
              data = JSON.parse(response.response);
@@ -2024,14 +2026,15 @@ function injectScript() {
           if (data.length > 0) {
             let nukeAlertButtonTooltip = "";
             data.forEach((entry) => {
+              nukes.push(entry);
               nukeAlertButtonTooltip += `${entry.word} (${entry.type} for ${entry.duration})\n`;
-              cleanNuke = entry.word.trim().toLowerCase();
+              let cleanNuke = entry.word.trim().toLowerCase();
               if (/^\/.*\/$/.test(cleanNuke) && cleanNuke.length > 2) {
                 const regexString = cleanNuke.slice(1, cleanNuke.length - 1);
                 const regex = new RegExp(regexString, "i");
-                nukes.push(regex);
+                nukesCompiled.push(regex);
               } else {
-                nukes.push(entry.word);
+                nukesCompiled.push(entry.word);
               }
             });
             nukeAlertButton.style.display = "";
