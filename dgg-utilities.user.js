@@ -617,6 +617,7 @@ function injectScript() {
     }
 
     textarea.value += `${username} `;
+    textarea.focus();
   }
 
   // creating a double click to copy setting
