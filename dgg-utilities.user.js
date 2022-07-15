@@ -656,8 +656,8 @@ function injectScript() {
     if (node.textContent === "LIVE") {
       if (!window.parent.document.title.includes("LIVE")) {
         ogtitle = window.parent.document.title;
-      }
-      window.parent.document.title = `LIVE - ${ogtitle}`;
+        window.parent.document.title = `LIVE - ${ogtitle}`;
+      } 
     } else {
       window.parent.document.title = ogtitle;
     }
