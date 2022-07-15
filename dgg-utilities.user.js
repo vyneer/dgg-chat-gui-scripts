@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.07.03
+// @version      dev-2022.07.15
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -26,6 +26,8 @@
 // * slight sticky mentions visibility improvement
 // * script should work on strims.gg now
 // * new svg icon
+// * focus the chat input after double clicking a username to copy to input (big thanks to @mattroseman <3)
+// * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
 // v1.6 - 2022-04-23
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
