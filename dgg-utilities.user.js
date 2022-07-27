@@ -101,6 +101,7 @@ const mutelinksChecklist = [
 ];
 
 let phrases = [];
+let phrasesEtag = "";
 let nukes = [];
 let nukesCompiled = [];
 let mutelinks = false;
@@ -1773,8 +1774,8 @@ function injectScript() {
         if (errorAlert.style.display == "") {
           errorAlert.style.display = "none";
         }
-        let data = JSON.parse(response.response);
         if (response.status == 200) {
+          let data = JSON.parse(response.response);
           phrases = [];
           data.forEach((entry) => {
             cleanPhrase = entry.phrase.trim().toLowerCase();
@@ -1787,16 +1788,127 @@ function injectScript() {
             }
           });
         } else {
-          console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - HTTP status code: ${response.status} - ${response.statusText}`);
+          console.error(`[ERROR] [dgg-utils] couldn't get the phrase data, going to try to get phrases from mitchdev.net - URL: "https://vyneer.me/tools/phrases", HTTP status code: ${response.status} - ${response.statusText}`);
+          GM.xmlHttpRequest({
+            method: "GET",
+            url: "https://mitchdev.net/api/dgg/list",
+            headers: {
+              "If-None-Match": `W/"${phrasesEtag}"`
+            },
+            onload: (response) => {
+              if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
+                let data = JSON.parse(response.response);
+                response.responseHeaders.split(/\r?\n/).forEach(el => {
+                  const splitHeader = el.split(": ");
+                  if (splitHeader[0] == "etag") {
+                    phrasesEtag = splitHeader[1].substring(3, splitHeader[1].length - 1)
+                  }
+                });
+                phrases = [];
+                data.forEach((entry) => {
+                  cleanPhrase = entry.phrase.trim().toLowerCase();
+                  if (/^\/.*\/$/.test(cleanPhrase) && cleanPhrase.length > 2) {
+                    const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
+                    const regex = new RegExp(regexString, "i");
+                    phrases.push(regex);
+                  } else {
+                    phrases.push(entry.phrase);
+                  }
+                });
+              } else if (response.status != 304) {
+                console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP status code: ${response.status} - ${response.statusText}`);
+              }
+            },
+            onerror: () => {
+              console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP error`);
+            },
+            ontimeout: () => {
+              console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP timeout`);
+            }
+          });
         }
       },
       onerror: () => {
         errorAlert.style.display = "";
-        console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - HTTP error`);
+        console.error(`[ERROR] [dgg-utils] couldn't get the phrase data, going to try to get phrases from mitchdev.net - URL: "https://vyneer.me/tools/phrases", HTTP error`);
+        GM.xmlHttpRequest({
+          method: "GET",
+          url: "https://mitchdev.net/api/dgg/list",
+          headers: {
+            "If-None-Match": `W/"${phrasesEtag}"`
+          },
+          onload: (response) => {
+            if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
+              let data = JSON.parse(response.response);
+              response.responseHeaders.split(/\r?\n/).forEach(el => {
+                const splitHeader = el.split(": ");
+                if (splitHeader[0] == "etag") {
+                  phrasesEtag = splitHeader[1].substring(3, splitHeader[1].length - 1)
+                }
+              });
+              phrases = [];
+              data.forEach((entry) => {
+                cleanPhrase = entry.phrase.trim().toLowerCase();
+                if (/^\/.*\/$/.test(cleanPhrase) && cleanPhrase.length > 2) {
+                  const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
+                  const regex = new RegExp(regexString, "i");
+                  phrases.push(regex);
+                } else {
+                  phrases.push(entry.phrase);
+                }
+              });
+            } else if (response.status != 304)  {
+              console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP status code: ${response.status} - ${response.statusText}`);
+            }
+          },
+          onerror: () => {
+            console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP error`);
+          },
+          ontimeout: () => {
+            console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP timeout`);
+          }
+        });
       },
       ontimeout: () => {
         errorAlert.style.display = "";
-        console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - HTTP timeout`);
+        console.error(`[ERROR] [dgg-utils] couldn't get the phrase data, going to try to get phrases from mitchdev.net - URL: "https://vyneer.me/tools/phrases", HTTP timeout`);
+        GM.xmlHttpRequest({
+          method: "GET",
+          url: "https://mitchdev.net/api/dgg/list",
+          headers: {
+            "If-None-Match": `W/"${phrasesEtag}"`
+          },
+          onload: (response) => {
+            if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
+              let data = JSON.parse(response.response);
+              response.responseHeaders.split(/\r?\n/).forEach(el => {
+                const splitHeader = el.split(": ");
+                if (splitHeader[0] == "etag") {
+                  phrasesEtag = splitHeader[1].substring(3, splitHeader[1].length - 1)
+                }
+              });
+              phrases = [];
+              data.forEach((entry) => {
+                cleanPhrase = entry.phrase.trim().toLowerCase();
+                if (/^\/.*\/$/.test(cleanPhrase) && cleanPhrase.length > 2) {
+                  const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
+                  const regex = new RegExp(regexString, "i");
+                  phrases.push(regex);
+                } else {
+                  phrases.push(entry.phrase);
+                }
+              });
+            } else if (response.status != 304)  {
+              console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP status code: ${response.status} - ${response.statusText}`);
+            }
+          },
+          onerror: () => {
+            console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP error`);
+          },
+          ontimeout: () => {
+            console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP timeout`);
+          }
+        });
       }
     });
   }
