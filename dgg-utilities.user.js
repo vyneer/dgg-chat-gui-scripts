@@ -222,7 +222,7 @@ function injectScript() {
     ? window.parent.document.querySelector("#host-pill-type")
     : undefined
   } catch (e) {
-    console.error(`[NONCRIT] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "change title on live" feature wont work: ${e}`);
+    console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "change title on live" feature wont work - ${e}`);
   }
 
   let utilSettingsStyle = document.createElement("style");
@@ -336,18 +336,28 @@ function injectScript() {
               method: "GET",
               url: "https://vyneer.me/tools/script/dev",
               onload: (response) => {
-                let data = JSON.parse(response.response);
-                if ("link" in data && "version" in data) {
-                  if (GM_info.script.version < data.version) {
-                    new DGGMsg(
-                      `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
-                      "msg-info msg-historical",
-                      ""
-                    );
-                    chatlines.scrollTop = chatlines.scrollHeight;
+                if (response.status == 200) {
+                  let data = JSON.parse(response.response);
+                  if ("link" in data && "version" in data) {
+                    if (GM_info.script.version < data.version) {
+                      new DGGMsg(
+                        `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
+                        "msg-info msg-historical",
+                        ""
+                      );
+                      chatlines.scrollTop = chatlines.scrollHeight;
+                    }
                   }
+                } else {
+                  console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP status code: ${response.status} - ${response.statusText}`);
                 }
               },
+              onerror: () => {
+                console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP error`);
+              },
+              ontimeout: () => {
+                console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP timeout`);
+              }
             });
 
             // show embeds on launch
@@ -429,8 +439,24 @@ function injectScript() {
       break;
   }
 
-  // making a button for the nuke alert
+  // making an error alert
   let chatWhispersArea = document.querySelectorAll(".chat-tools-group")[0];
+  let errorAlert = document.createElement("a");
+  errorAlert.id = "error-alert";
+  errorAlert.className = "chat-tool-btn";
+  errorAlert.title = "Can't connect to vyneer.me";
+  errorAlert.style.cursor = "unset";
+  errorAlert.style.display = "none";
+  let errorAlert_i = document.createElement("i");
+  errorAlert_i.className = "btn-icon";
+  errorAlert_i.innerHTML = "⚠️";
+  errorAlert_i.style.fontStyle = "normal";
+  errorAlert_i.style.fontSize = "larger";
+  errorAlert_i.style.textAlign = "center";
+  errorAlert_i.style.color = "red";
+  errorAlert_i.style.opacity = 1;
+
+  // making a button for the nuke alert
   let nukeAlertButton = document.createElement("a");
   nukeAlertButton.id = "nukes-btn";
   nukeAlertButton.className = "chat-tool-btn";
@@ -485,11 +511,13 @@ function injectScript() {
   // appending buttons to the right area on screen
   sendAnywayButton.appendChild(sendAnywayButton_i);
   embedsButton.appendChild(embedsButton_i);
+  errorAlert.appendChild(errorAlert_i);
   nukeAlertButton.appendChild(nukeAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_span);
   chatToolsArea.prepend(embedsButton);
   chatToolsArea.prepend(sendAnywayButton);
+  utilitiesButtons.appendChild(errorAlert);
   utilitiesButtons.appendChild(nukeAlertButton);
   utilitiesButtons.appendChild(linksAlertButton);
   chatWhispersArea.appendChild(utilitiesButtons);
@@ -651,7 +679,7 @@ function injectScript() {
   try {
     ogtitle = window.parent.document.title;
   } catch (e) {
-    console.error(`[NONCRIT] [dgg-utils] script might be running in cross-origin frame, can't get the og title of the stream, the "change title on live" feature wont work: ${e}`)
+    console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the og title of the stream, the "change title on live" feature wont work - ${e}`)
   }
 
   let checkLive = (node) => {
@@ -1096,26 +1124,41 @@ function injectScript() {
                       method: "GET",
                       url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${id}`,
                       onload: (response) => {
-                        let data = JSON.parse(response.response);
-                        if ("title" in data && "author_name" in data) {
-                          let title = data["title"];
-                          let channel = data["author_name"];
-                          switch (config.youtubeEmbedFormat) {
-                            case 2:
-                              embedNode.text = `${platform}/${id} (${channel})`;
-                              break;
-                            case 3:
-                              embedNode.text = `${platform}/${id} (${title})`;
-                              break;
-                            case 4:
-                              embedNode.text = `${platform}/${channel}`;
-                              break;
-                            case 5:
-                              embedNode.text = `${platform}/${title}`;
-                              break;
+                        if (errorAlert.style.display == "") {
+                          errorAlert.style.display = "none";
+                        }
+                        if (response.status == 200) {
+                          let data = JSON.parse(response.response);
+                          if ("title" in data && "author_name" in data) {
+                            let title = data["title"];
+                            let channel = data["author_name"];
+                            switch (config.youtubeEmbedFormat) {
+                              case 2:
+                                embedNode.text = `${platform}/${id} (${channel})`;
+                                break;
+                              case 3:
+                                embedNode.text = `${platform}/${id} (${title})`;
+                                break;
+                              case 4:
+                                embedNode.text = `${platform}/${channel}`;
+                                break;
+                              case 5:
+                                embedNode.text = `${platform}/${title}`;
+                                break;
+                            }
                           }
+                        } else {
+                          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
                         }
                       },
+                      onerror: () => {
+                        errorAlert.style.display = "";
+                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
+                      },
+                      ontimeout: () => {
+                        errorAlert.style.display = "";
+                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
+                      }
                     });
                     break;
                 }
@@ -1508,7 +1551,7 @@ function injectScript() {
           (location.search ? location.search : "")
         ).replace(/\/$/, "");
       } catch (e) {
-        console.error(`[NONCRIT] [dgg-utils] script might be running in cross-origin frame, can't get the bigscreen url, setting it to "https://www.destiny.gg/bigscreen": ${e}`);
+        console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the bigscreen url, setting it to "https://www.destiny.gg/bigscreen" - ${e}`);
         this.url = "https://www.destiny.gg/bigscreen"
       }
     }
@@ -1706,6 +1749,18 @@ function injectScript() {
       msg.appendChild(msgInnerText);
       chatlines.appendChild(msg);
     }
+
+    update() {
+      if (config.alwaysScrollDown) {
+        chatlines.scrollTop = chatlines.scrollHeight;
+      } else {
+        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+          chatlines.scrollTop = chatlines.scrollHeight;
+        } else {
+          chatlines.scrollLeft = chatlines.scrollWidth;
+        }
+      }
+    }
   }
 
   // function to get phrases
@@ -1715,6 +1770,9 @@ function injectScript() {
       method: "GET",
       url: "https://vyneer.me/tools/phrases",
       onload: (response) => {
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
         let data = JSON.parse(response.response);
         if (response.status == 200) {
           phrases = [];
@@ -1729,9 +1787,17 @@ function injectScript() {
             }
           });
         } else {
-          console.log(`dgg-utils error, can't get phrases - ${response.status}`);
+          console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - HTTP status code: ${response.status} - ${response.statusText}`);
         }
       },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - HTTP timeout`);
+      }
     });
   }
 
@@ -1868,23 +1934,13 @@ function injectScript() {
             } ${entry.count == 1 ? "embed" : "embeds"})`,
             "msg-status msg-historical",
             ""
-          );
+          ).update();
         } else {
           new DGGMsg(
             embedForm.format(entry.link, entry.channel, entry.title),
             "msg-status msg-historical",
             entry.timestamp
-          );
-        }
-
-        if (config.alwaysScrollDown) {
-          chatlines.scrollTop = chatlines.scrollHeight;
-        } else {
-          if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-            chatlines.scrollTop = chatlines.scrollHeight;
-          } else {
-            chatlines.scrollLeft = chatlines.scrollWidth;
-          }
+          ).update();
         }
       });
     } else {
@@ -1892,43 +1948,49 @@ function injectScript() {
         if (!ifnone) {
           new DGGMsg(
             `Looks like nobody embedded anything in the last ${config.embedTime} minutes.`,
-            "msg-status msg-error",
+            "msg-error",
             ""
-          );
+          ).update();
         } else {
           new DGGMsg(
             `Looks like nobody embedded anything in the last ${config.embedTime} minutes, showing you the last embeds instead.`,
-            "msg-status msg-error",
+            "msg-error",
             ""
-          );
+          ).update();
           GM.xmlHttpRequest({
             method: "GET",
             url: `https://vyneer.me/tools/embeds/last`,
             onload: (response) => {
-              let data = JSON.parse(response.response);
-              if (config.lastEmbeds) {
-                data = data.reverse();
+              if (errorAlert.style.display == "") {
+                errorAlert.style.display = "none";
               }
-              serveEmbeds(data, true, false);
+              if (response.status == 200) {
+                let data = JSON.parse(response.response);
+                if (config.lastEmbeds) {
+                  data = data.reverse();
+                }
+                serveEmbeds(data, true, false);
+              } else {
+                new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - URL: "https://vyneer.me/tools/embeds/last", HTTP status code: ${response.status} - ${response.statusText}`);
+              }
             },
+            onerror: () => {
+                new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP error`);
+            },
+            ontimeout: () => {
+                new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP timeout`);
+            }
           });
         }
       } else {
         new DGGMsg(
           `Looks like there's no data regarding the last embeds.`,
-          "msg-status msg-error",
+          "msg-error",
           ""
-        );
-      }
-
-      if (config.alwaysScrollDown) {
-        chatlines.scrollTop = chatlines.scrollHeight;
-      } else {
-        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-          chatlines.scrollTop = chatlines.scrollHeight;
-        } else {
-          chatlines.scrollLeft = chatlines.scrollWidth;
-        }
+        ).update();
       }
     }
   }
@@ -1948,65 +2010,67 @@ function injectScript() {
         `Getting top 5 embeds in the last ${config.embedTime} minutes...`,
         "msg-info",
         ""
-      );
+      ).update();
       embedUrl = `https://vyneer.me/tools/embeds?t=${config.embedTime}`;
     } else {
-      new DGGMsg(`Getting last 5 embeds...`, "msg-info", "");
+      new DGGMsg(`Getting last 5 embeds...`, "msg-info", "").update();
       embedUrl = `https://vyneer.me/tools/embeds/last`;
-    }
-
-    if (config.alwaysScrollDown) {
-      chatlines.scrollTop = chatlines.scrollHeight;
-    } else {
-      if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-        chatlines.scrollTop = chatlines.scrollHeight;
-      } else {
-        chatlines.scrollLeft = chatlines.scrollWidth;
-      }
     }
 
     GM.xmlHttpRequest({
       method: "GET",
       url: embedUrl,
       onload: (response) => {
-        let embedData = JSON.parse(response.response);
-        if (config.lastEmbeds) {
-          embedData = embedData.reverse();
-        }
-        if (config.showLastVOD) {
-          GM.xmlHttpRequest({
-            method: "GET",
-            url: "https://vyneer.me/tools/ytvods",
-            onload: (response) => {
-              let vodData = [];
-              if (response.status == 200) {
-                vodData = JSON.parse(response.response);
-                if (vodData.length > 0) {
-                  new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "");
+        if (response.status == 200) {
+          let embedData = JSON.parse(response.response);
+          if (config.lastEmbeds) {
+            embedData = embedData.reverse();
+          }
+          if (config.showLastVOD) {
+            GM.xmlHttpRequest({
+              method: "GET",
+              url: "https://vyneer.me/tools/ytvods",
+              onload: (response) => {
+                let vodData = [];
+                if (response.status == 200) {
+                  vodData = JSON.parse(response.response);
+                  if (vodData.length > 0) {
+                    new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
+                  } else {
+                    new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                    console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - the VOD db is empty`);
+                  }
                 } else {
-                  console.error(`dgg-utils error - couldn't get the VOD data (the VOD db is empty)`);
+                  new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                  console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP status code: ${response.status} - ${response.statusText}`);
                 }
-              } else {
-                console.error(`dgg-utils error - couldn't get the VOD data (status code: ${response.status})`);
+                serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+              },
+              onerror: () => {
+                new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP error`);
+              },
+              ontimeout: () => {
+                new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
               }
-
-              if (config.alwaysScrollDown) {
-                chatlines.scrollTop = chatlines.scrollHeight;
-              } else {
-                if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-                  chatlines.scrollTop = chatlines.scrollHeight;
-                } else {
-                  chatlines.scrollLeft = chatlines.scrollWidth;
-                }
-              }
-
-              serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
-            },
-          });
+            });
+          } else {
+            serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+          }
         } else {
-          serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+          new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+          console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - URL: ${embedUrl}, HTTP status code: ${response.status} - ${response.statusText}`);
         }
       },
+      onerror: () => {
+        new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+        console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP error`);
+      },
+      ontimeout: () => {
+        new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+        console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+      }
     });
   }
 
@@ -2016,6 +2080,9 @@ function injectScript() {
       method: "GET",
       url: "https://vyneer.me/tools/nukes",
       onload: (response) => {
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
         let data = [];
         if (DEBUG) {
           data = DEBUG_NUKE_DATA;
@@ -2056,15 +2123,26 @@ function injectScript() {
             }
           }
         } else {
-          console.log(`dgg-utils error, can't get nukes - ${response.status}`);
+          console.error(`[ERROR] [dgg-utils] couldn't get the nuke data - HTTP status code: ${response.status} - ${response.statusText}`);
         }
       },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the nuke data - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the nuke data - HTTP timeout`);
+      }
     });
 
     GM.xmlHttpRequest({
       method: "GET",
       url: "https://vyneer.me/tools/mutelinks",
       onload: (response) => {
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
         let data = [];
         if (DEBUG) {
           data = DEBUG_LINKS_DATA;
@@ -2091,11 +2169,19 @@ function injectScript() {
             }
           }
         } else {
-          console.log(
-            `dgg-utils error, can't get mutelinks - ${response.status}`
+          console.error(
+            `[ERROR] [dgg-utils] couldn't get the mutelinks data - HTTP status code: ${response.status} - ${response.statusText}`
           );
         }
       },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the mutelinks data - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the mutelinks data - HTTP timeout`);
+      }
     });
   }
 
@@ -2118,17 +2204,7 @@ function injectScript() {
   // adding an event listener to the nukes button
   // once you press it it fetches nukes from vyneer.me and displays them in chat
   nukeAlertButton.addEventListener("click", () => {
-    new DGGMsg(`Showing current nukes...`, "msg-info", "");
-
-    if (config.alwaysScrollDown) {
-      chatlines.scrollTop = chatlines.scrollHeight;
-    } else {
-      if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-        chatlines.scrollTop = chatlines.scrollHeight;
-      } else {
-        chatlines.scrollLeft = chatlines.scrollWidth;
-      }
-    }
+    new DGGMsg(`Showing current nukes...`, "msg-info", "").update();
 
     if (nukes.length > 0) {
       nukes.forEach((result) => {
@@ -2138,32 +2214,14 @@ function injectScript() {
           })`,
           "msg-status msg-historical",
           ""
-        );
-        if (config.alwaysScrollDown) {
-          chatlines.scrollTop = chatlines.scrollHeight;
-        } else {
-          if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-            chatlines.scrollTop = chatlines.scrollHeight;
-          } else {
-            chatlines.scrollLeft = chatlines.scrollWidth;
-          }
-        }
+        ).update();
       });
     } else {
       new DGGMsg(
         `Looks like there's no data regarding the nukes.`,
-        "msg-status msg-error",
+        "msg-error",
         ""
-      );
-      if (config.alwaysScrollDown) {
-        chatlines.scrollTop = chatlines.scrollHeight;
-      } else {
-        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-          chatlines.scrollTop = chatlines.scrollHeight;
-        } else {
-          chatlines.scrollLeft = chatlines.scrollWidth;
-        }
-      }
+      ).update();
     }
   });
 }
