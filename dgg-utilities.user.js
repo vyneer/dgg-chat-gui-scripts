@@ -130,7 +130,9 @@ const configItems = {
     nukeColor: new ConfigItem("nukeColor", "1f1500"),
     mutelinksColor: new ConfigItem("mutelinksColor", "120016"),
     customPhrases: new ConfigItem("customPhrases", []),
+    customPhrasesSoft: new ConfigItem("customPhrasesSoft", []),
     customColor: new ConfigItem("customColor", "1f0000"),
+    customSoftColor: new ConfigItem("customSoftColor", "680030"),
     editEmbeds: new ConfigItem("editEmbeds", false),
     preventEnter: new ConfigItem("preventEnter", false),
     hiddenFlairs: new ConfigItem("hiddenFlairs", []),
@@ -1137,6 +1139,32 @@ function injectScript() {
     });
     customPhrasesGroup.appendChild(customPhrasesArea);
 
+    // creating a custom soft phrases setting
+    let customPhrasesSoftGroup = document.createElement("div");
+    customPhrasesSoftGroup.className = "form-group row";
+    let customPhrasesSoftLabel = document.createElement("label");
+    customPhrasesSoftLabel.innerHTML = "Custom Soft Alert Phrases";
+    customPhrasesSoftLabel.title =
+        "Phrases that will color the input area red if you type them in (exact match)";
+    customPhrasesSoftGroup.appendChild(customPhrasesSoftLabel);
+    let customPhrasesSoftArea = document.createElement("textarea");
+    customPhrasesSoftArea.style.resize = "vertical";
+    customPhrasesSoftArea.className = "form-control";
+    customPhrasesSoftArea.placeholder =
+        "Comma separated ... (regex not supported)";
+    customPhrasesSoftArea.value =
+        config.customPhrasesSoft == "[]" ? "" : config.customPhrasesSoft;
+    customPhrasesSoftArea.addEventListener("change", () => {
+        let val = customPhrasesSoftArea.value.split(",");
+        if (customPhrasesSoftArea.value.length > 0) {
+            config.customPhrasesSoft = val;
+        } else {
+            config.customPhrasesSoft =
+                configItems.customPhrasesSoft.defaultValue;
+        }
+    });
+    customPhrasesSoftGroup.appendChild(customPhrasesSoftArea);
+
     // creating an custom phrase textarea color setting
     let customColorGroup = document.createElement("div");
     customColorGroup.className = "form-group row";
@@ -1164,6 +1192,34 @@ function injectScript() {
         }
     });
     customColorGroup.appendChild(customColorArea);
+
+    // creating an custom soft phrase textarea color setting
+    let customSoftColorGroup = document.createElement("div");
+    customSoftColorGroup.className = "form-group row";
+    let customSoftColorLabel = document.createElement("label");
+    customSoftColorLabel.innerHTML = "Text area color on custom soft phrase";
+    customSoftColorLabel.title =
+        "The color that text area changes when you type a custom soft phrase";
+    customSoftColorLabel.style.marginBottom = 0;
+    customSoftColorGroup.appendChild(customSoftColorLabel);
+    let customSoftColorArea = document.createElement("input");
+    customSoftColorArea.name = "customSoftColorArea";
+    customSoftColorArea.type = "text";
+    customSoftColorArea.className = "form-control";
+    customSoftColorArea.placeholder = configItems.customSoftColor.defaultValue;
+    customSoftColorArea.value = config.customSoftColor;
+    customSoftColorArea.style.marginLeft = ".6em";
+    customSoftColorArea.style.width = "60px";
+    customSoftColorArea.style.backgroundColor = `#${config.customSoftColor}`;
+    customSoftColorArea.addEventListener("change", () => {
+        if (customSoftColorArea.value.length > 0) {
+            config.customSoftColor = customSoftColorArea.value;
+            customSoftColorArea.style.backgroundColor = `#${config.customSoftColor}`;
+        } else {
+            config.customSoftColor = configItems.customSoftColor.defaultValue;
+        }
+    });
+    customSoftColorGroup.appendChild(customSoftColorArea);
 
     // make an observer that checks for embeds
     let embedObserver = new MutationObserver((mutations) => {
@@ -1594,7 +1650,9 @@ function injectScript() {
     settingsArea.appendChild(nukeColorGroup);
     settingsArea.appendChild(mutelinksColorGroup);
     settingsArea.appendChild(customPhrasesGroup);
+    settingsArea.appendChild(customPhrasesSoftGroup);
     settingsArea.appendChild(customColorGroup);
+    settingsArea.appendChild(customSoftColorGroup);
     let experimentalTitle = document.createElement("h4");
     experimentalTitle.innerHTML = "Utilities Experimental Settings";
     experimentalTitle.style.marginBottom = "0px";
@@ -2112,6 +2170,7 @@ function injectScript() {
         ) {
             let text = textarea.value.toLowerCase();
             let resultCustom;
+            let resultCustomSoft;
             let resultLinks;
             let resultNukes;
             let result;
@@ -2166,6 +2225,17 @@ function injectScript() {
                 }
             }
 
+            if (config.customPhrasesSoft.length > 0) {
+                resultCustomSoft = config.customPhrasesSoft.find((entry) => {
+                    let regex = new RegExp(`\\b${entry}\\b`);
+                    if (regex.test(text)) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                });
+            }
+
             if (result != undefined) {
                 foundPhraseOrNuke = true;
                 textarea.style.backgroundColor = `#${config.phraseColor}`;
@@ -2192,6 +2262,16 @@ function injectScript() {
                 document.body.style.setProperty(
                     "--flashing-color",
                     `#${config.customColor}`
+                );
+                if (config.preventEnter) {
+                    sendAnywayButton.style.display = "";
+                }
+            } else if (resultCustomSoft != undefined) {
+                foundPhraseOrNuke = true;
+                textarea.style.backgroundColor = `#${config.customSoftColor}`;
+                document.body.style.setProperty(
+                    "--flashing-color",
+                    `#${config.customSoftColor}`
                 );
                 if (config.preventEnter) {
                     sendAnywayButton.style.display = "";
