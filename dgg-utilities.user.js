@@ -100,6 +100,7 @@ const configItems = {
   customPhrases     : new ConfigItem("customPhrases",      []      ),
   customPhrasesSoft : new ConfigItem("customPhrasesSoft",      []      ),
   customColor       : new ConfigItem("customColor",        "1f0000"),
+  customSoftColor       : new ConfigItem("customSoftColor",        "680030"),
   editEmbeds        : new ConfigItem("editEmbeds",         false   ),
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
@@ -909,6 +910,32 @@ function injectScript() {
   });
   customColorGroup.appendChild(customColorArea);
 
+  // creating an custom soft phrase textarea color setting
+  let customSoftColorGroup = document.createElement("div");
+  customSoftColorGroup.className = "form-group row";
+  let customSoftColorLabel = document.createElement("label");
+  customSoftColorLabel.innerHTML = "Text area color on custom soft phrase";
+  customSoftColorLabel.title =
+    "The color that text area changes when you type a custom soft phrase";
+  customSoftColorLabel.style.marginBottom = 0;
+  customSoftColorGroup.appendChild(customSoftColorLabel);
+  let customSoftColorArea = document.createElement("input");
+  customSoftColorArea.name = "customSoftColorArea";
+  customSoftColorArea.type = "text";
+  customSoftColorArea.className = "form-control";
+  customSoftColorArea.placeholder = configItems.customSoftColor.defaultValue;
+  customSoftColorArea.value = config.customSoftColor;
+  customSoftColorArea.style.marginLeft = ".6em";
+  customSoftColorArea.style.width = "60px";
+  customSoftColorArea.addEventListener("change", () => {
+    if (customSoftColorArea.value.length > 0) {
+      config.customSoftColor = customSoftColorArea.value;
+    } else {
+      config.customSoftColor = configItems.customSoftColor.defaultValue;
+    }
+  });
+  customSoftColorGroup.appendChild(customSoftColorArea);
+
   // make an observer that checks for embeds
   let embedObserver = new MutationObserver((mutations) => {
     if (config.youtubeEmbedFormat != 1 && mutations.length < 3) {
@@ -1283,6 +1310,7 @@ function injectScript() {
   settingsArea.appendChild(customPhrasesGroup);
   settingsArea.appendChild(customPhrasesSoftGroup);
   settingsArea.appendChild(customColorGroup);
+  settingsArea.appendChild(customSoftColorGroup);
   let experimentalTitle = document.createElement("h4");
   experimentalTitle.innerHTML = "Utilities Experimental Settings";
   experimentalTitle.style.marginBottom = "0px";
@@ -1635,8 +1663,8 @@ function injectScript() {
       }
     } else if (resultCustomSoft != undefined){
        foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${config.customColor}`;
-      document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
+      textarea.style.backgroundColor = `#${config.customSoftColor}`;
+      document.body.style.setProperty("--flashing-color", `#${config.customSoftColor}`);
       if (config.preventEnter) {
         sendAnywayButton.style.display = "";
       }
