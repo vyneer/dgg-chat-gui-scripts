@@ -98,6 +98,7 @@ const configItems = {
   nukeColor         : new ConfigItem("nukeColor",          "1f1500"),
   mutelinksColor    : new ConfigItem("mutelinksColor",     "120016"),
   customPhrases     : new ConfigItem("customPhrases",      []      ),
+  customPhrasesSoft : new ConfigItem("customPhrasesSoft",      []      ),
   customColor       : new ConfigItem("customColor",        "1f0000"),
   editEmbeds        : new ConfigItem("editEmbeds",         false   ),
   preventEnter      : new ConfigItem("preventEnter",       false   ),
@@ -858,6 +859,30 @@ function injectScript() {
   });
   customPhrasesGroup.appendChild(customPhrasesArea);
 
+  // creating a custom soft phrases setting
+  let customPhrasesSoftGroup = document.createElement("div");
+  customPhrasesSoftGroup.className = "form-group row";
+  let customPhrasesSoftLabel = document.createElement("label");
+  customPhrasesSoftLabel.innerHTML = "Custom Soft Alert Phrases";
+  customPhrasesSoftLabel.title =
+    "Phrases that will color the input area red if you type them in (exact match)";
+  customPhrasesSoftGroup.appendChild(customPhrasesSoftLabel);
+  let customPhrasesSoftArea = document.createElement("textarea");
+  customPhrasesSoftArea.style.resize = "vertical";
+  customPhrasesSoftArea.className = "form-control";
+  customPhrasesSoftArea.placeholder = "Comma separated ... (regex not supported)";
+  customPhrasesSoftArea.value =
+    config.customPhrasesSoft == "[]" ? "" : config.customPhrasesSoft;
+  customPhrasesSoftArea.addEventListener("change", () => {
+    let val = customPhrasesSoftArea.value.split(",");
+    if (customPhrasesSoftArea.value.length > 0) {
+      config.customPhrasesSoft = val;
+    } else {
+      config.customPhrasesSoft = configItems.customPhrasesSoft.defaultValue;
+    }
+  });
+  customPhrasesSoftGroup.appendChild(customPhrasesSoftArea);
+
   // creating an custom phrase textarea color setting
   let customColorGroup = document.createElement("div");
   customColorGroup.className = "form-group row";
@@ -1256,6 +1281,7 @@ function injectScript() {
   settingsArea.appendChild(nukeColorGroup);
   settingsArea.appendChild(mutelinksColorGroup);
   settingsArea.appendChild(customPhrasesGroup);
+  settingsArea.appendChild(customPhrasesSoftGroup);
   settingsArea.appendChild(customColorGroup);
   let experimentalTitle = document.createElement("h4");
   experimentalTitle.innerHTML = "Utilities Experimental Settings";
@@ -1548,6 +1574,7 @@ function injectScript() {
   textarea.addEventListener("keyup", () => {
     let text = textarea.value.toLowerCase();
     let resultCustom;
+    let resultCustomSoft;
     let resultNukes;
     let result;
 
@@ -1581,6 +1608,17 @@ function injectScript() {
       });
     }
 
+    if (config.customPhrasesSoft.length > 0) {
+      resultCustomSoft = config.customPhrasesSoft.find((entry) => {
+        let regex = new RegExp(`\\b${entry}\\b`);
+        if (regex.test(text)) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+    }
+
     if (result != undefined) {
       foundPhraseOrNuke = true;
       textarea.style.backgroundColor = `#${config.phraseColor}`;
@@ -1595,7 +1633,14 @@ function injectScript() {
       if (config.preventEnter) {
         sendAnywayButton.style.display = "";
       }
-    } else if (resultNukes != undefined) {
+    } else if (resultCustomSoft != undefined){
+       foundPhraseOrNuke = true;
+      textarea.style.backgroundColor = `#${config.customColor}`;
+      document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
+      if (config.preventEnter) {
+        sendAnywayButton.style.display = "";
+      }
+    }else if (resultNukes != undefined) {
       foundPhraseOrNuke = true;
       textarea.style.backgroundColor = `#${config.nukeColor}`;
       document.body.style.setProperty("--flashing-color", `#${config.nukeColor}`);
