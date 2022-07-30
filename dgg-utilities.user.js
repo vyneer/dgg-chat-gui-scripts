@@ -132,7 +132,7 @@ const configItems = {
   customPhrases     : new ConfigItem("customPhrases",      []      ),
   customPhrasesSoft : new ConfigItem("customPhrasesSoft",  []      ),
   customColor       : new ConfigItem("customColor",        "1f0000"),
-  customSoftColor   : new ConfigItem("customSoftColor",    "680030"),
+  customSoftColor   : new ConfigItem("customSoftColor",    "260019"),
   editEmbeds        : new ConfigItem("editEmbeds",         false   ),
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
@@ -1978,6 +1978,7 @@ function injectScript() {
     if (!(event.code == "ControlLeft" || event.code == "ControlRight" || event.code == "AltLeft" || event.code == "AltRight" || event.code == "ShiftLeft" || event.code == "ShiftRight" || event.code == "MetaLeft" || event.code == "MetaRight")) {
       let text = textarea.value.toLowerCase();
       let resultCustom;
+      let resultCustomSoft;
       let resultLinks;
       let resultNukes;
       let result;
