@@ -1,10 +1,9 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.6.0.1
+// @version      1.6
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
-// @match        *://*.destiny.gg/bigscreen*
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
 // @run-at       document-start
@@ -18,8 +17,6 @@
 // ==/UserScript==
 
 // ==Changelog==
-// v1.6.0.1 - 2022-09-23
-// * get violentmonkey on chrome working (violentmonkey update broke it, should be fixed in the next version https://github.com/violentmonkey/violentmonkey/issues/1572)
 // v1.6 - 2022-04-23
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
@@ -45,9 +42,6 @@
 // v1.4.1 - 2021-10-13
 // * fix mutelinks icon not moving based on the amount of whispers
 // * replace vars with lets
-
-// temporary workaround until new violentmonkey version
-if (window == top) return
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
