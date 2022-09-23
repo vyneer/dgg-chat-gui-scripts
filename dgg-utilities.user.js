@@ -74,6 +74,16 @@ const DEBUG_LINKS_DATA = [
     status: "on",
   },
 ];
+const DEBUG_VIEWER_DATA = [
+  {
+    "streams": {
+      "youtube": {
+        "live": true,
+        "viewers": 13572
+      }
+    }
+  },
+];
 
 const timeOptions = {
   hour12: false,
@@ -119,6 +129,7 @@ class ConfigItem {
   }
 }
 const configItems = {
+  liveViewersCount  : new ConfigItem("liveViewersCount",   true    ),
   alwaysScrollDown  : new ConfigItem("alwaysScrollDown",   true    ),
   changeTitleOnLive : new ConfigItem("changeTitleOnLive",  false   ),
   embedIconStyle    : new ConfigItem("embedIconStyle",     1       ),
@@ -224,13 +235,96 @@ function injectScript() {
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
   let livePill = undefined;
-  
+  let viewersPill = undefined;
+
   try {
     livePill = !window.parent.location.href.includes("embed")
     ? window.parent.document.querySelector("#host-pill-type")
     : undefined
   } catch (e) {
     console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "change title on live" feature wont work - ${e}`);
+  }
+
+  try {
+    if (!window.parent.location.href.includes("embed")) {
+      let secondaryNav = window.parent.document.getElementById("secondary-navbar");
+      let bigscreenBtn = window.parent.document.getElementsByClassName('nav-item bigscreen')[0];
+
+      viewersPill = window.parent.document.createElement('li');
+      viewersPill.setAttribute('class', 'nav-item');
+      viewersPill.setAttribute('id', 'viewer-pill');
+      let button = window.parent.document.createElement('div');
+      button.setAttribute('id', 'viewer-pill-button');
+      let text = window.parent.document.createElement('div');
+      text.setAttribute('id', 'viewer-pill-text');
+      let icon = window.parent.document.createElement('div');
+      icon.setAttribute('id', 'viewer-pill-icon');
+      let i = window.parent.document.createElement('i');
+      i.setAttribute('class', 'fa fa-user');
+      let views = window.parent.document.createElement('span');
+      views.setAttribute('id', 'viewer-pill-views');
+      views.append("0");
+
+      icon.appendChild(i);
+      text.appendChild(icon);
+      text.appendChild(views);
+      button.appendChild(text);
+      viewersPill.appendChild(button);
+
+      secondaryNav.insertBefore(viewersPill, bigscreenBtn);
+
+      // css for viewer pill
+      let style = document.createElement('style');
+      style.innerHTML = `
+        #bigscreen #viewer-pill {
+          display: none;
+        }
+        #viewer-pill {
+          display: none;
+          cursor: default;
+          height: 42px;
+        }
+        #viewer-pill #viewer-pill-button {
+          margin: 0.3em 1em 0.3em -0.5em;
+          transition: background-color 150ms linear;
+          border: 1px solid #3b3b3b;
+          border-top-color: #272727;
+          border-radius: 2em;
+          display: flex;
+          align-items: center;
+          background-color: #111;
+          font-size: .9em;
+        }
+        #viewer-pill #viewer-pill-button #viewer-pill-text {
+          height: 100%;
+          display: flex;
+          align-items: center;
+        }
+        #viewer-pill #viewer-pill-button #viewer-pill-views {
+          margin: 0 0.75em 0.25em -0.5em;
+          text-transform: uppercase;
+          max-width: 110px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        #viewer-pill #viewer-pill-button #viewer-pill-icon {
+          position: relative;
+          height: 100%;
+          width: 35px;
+          opacity: .5;
+          overflow: hidden;
+        }
+        #viewer-pill #viewer-pill-button #viewer-pill-icon i {
+          position: absolute;
+          top: 50%;
+          left: 48%;
+          transform: translate(-50%, -50%);
+        }`;
+
+      window.parent.document.head.appendChild(style);
+    } else viewersPill = undefined;
+  } catch (e) {
+    console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "viewers" feature wont work - ${e}`);
   }
 
   let utilSettingsStyle = document.createElement("style");
@@ -615,6 +709,24 @@ function injectScript() {
   title.innerHTML = `Utilities General Settings`;
   // appending it to the settings menu
   settingsArea.appendChild(title);
+
+  // liveViewersCount
+  let liveViewersCountGroup = document.createElement("div");
+  liveViewersCountGroup.className = "form-group checkbox";
+  let liveViewersCountLabel = document.createElement("label");
+  liveViewersCountLabel.innerHTML = "Show live viewer count in navigation bar";
+  liveViewersCountGroup.appendChild(liveViewersCountLabel);
+  let liveViewersCountCheck = document.createElement("input");
+  liveViewersCountCheck.name = "liveViewersCount";
+  liveViewersCountCheck.type = "checkbox";
+  liveViewersCountCheck.checked = config.liveViewersCount;
+  liveViewersCountCheck.addEventListener("change", () => {
+      config.liveViewersCount = liveViewersCountCheck.checked
+      if (viewersPill !== undefined) {
+          viewersPill.style.display = config.liveViewersCount ? "flex" : "none";
+      }
+  });
+  liveViewersCountLabel.prepend(liveViewersCountCheck);
 
   // creating an always scroll down setting
   let alwaysScrollDownGroup = document.createElement("div");
@@ -1535,6 +1647,7 @@ function injectScript() {
   document.head.appendChild(settingsStyles);
 
   // appending all the settings to our area
+  settingsArea.appendChild(liveViewersCountGroup);
   settingsArea.appendChild(alwaysScrollDownGroup);
   settingsArea.appendChild(doubleClickCopyGroup);
   let embedsTitle = document.createElement("h4");
@@ -2431,8 +2544,44 @@ function injectScript() {
   getNukes();
   getMutelinks();
 
+  // function to get number of viewers on destinys stream.
+  function getViewers() {
+    if (config.liveViewersCount) {
+      GM.xmlHttpRequest({
+        method: "GET",
+        url: "https://www.destiny.gg/api/info/stream",
+        onload: (response) => {
+          if (response.status == 200) {
+            let data = JSON.parse(response.response).data;
+            if (DEBUG) data = DEBUG_VIEWER_DATA[0];
+            if (data.streams.youtube.live) {
+              viewersPill.style.display = "flex";
+              window.parent.document.getElementById("viewer-pill-views").textContent = data.streams.youtube.viewers.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            } else {
+              viewersPill.style.display = "none";
+              window.parent.document.getElementById('viewer-pill-views').textContent = '0';
+            }
+          } else {
+            console.error(
+              `[ERROR] [dgg-utils] couldn't get the viewer data - HTTP status code: ${response.status} - ${response.statusText}`
+            );
+          }
+        },
+        onerror: () => {
+          console.error(`[ERROR] [dgg-utils] couldn't get viewer data - HTTP error`);
+        },
+        ontimeout: () => {
+          console.error(`[ERROR] [dgg-utils] couldn't get viewer data - HTTP timeout`);
+        }
+      });
+    }
+  }
+
+  if (viewersPill !== undefined) getViewers();
+
   setInterval(() => {
     getNukesMutesPhrasesTimestamps();
+    if (viewersPill !== undefined) getViewers();
   }, 15000);
 
   // make an observer move nuke/mutelinks buttons based on amount of whispers
