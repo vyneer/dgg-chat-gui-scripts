@@ -29,6 +29,7 @@
 // * focus the chat input after double clicking a username to copy to input (big thanks to @mattroseman <3)
 // * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
 // * switch to the timestamp update model (might be buggy, but hopefully not)
+// * show viewer count next to the live pill (big thanks to @Mitchdev <3)
 // v1.6 - 2022-04-23
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
@@ -84,6 +85,8 @@ const DEBUG_VIEWER_DATA = [
     }
   },
 ];
+
+const dggStreamInfoKey = "dggApi:streamInfo";
 
 const timeOptions = {
   hour12: false,
@@ -2547,33 +2550,22 @@ function injectScript() {
   // function to get number of viewers on destinys stream.
   function getViewers() {
     if (config.liveViewersCount) {
-      GM.xmlHttpRequest({
-        method: "GET",
-        url: "https://www.destiny.gg/api/info/stream",
-        onload: (response) => {
-          if (response.status == 200) {
-            let data = JSON.parse(response.response).data;
-            if (DEBUG) data = DEBUG_VIEWER_DATA[0];
-            if (data.streams.youtube.live) {
-              viewersPill.style.display = "flex";
-              window.parent.document.getElementById("viewer-pill-views").textContent = data.streams.youtube.viewers.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-            } else {
-              viewersPill.style.display = "none";
-              window.parent.document.getElementById('viewer-pill-views').textContent = '0';
-            }
-          } else {
-            console.error(
-              `[ERROR] [dgg-utils] couldn't get the viewer data - HTTP status code: ${response.status} - ${response.statusText}`
-            );
-          }
-        },
-        onerror: () => {
-          console.error(`[ERROR] [dgg-utils] couldn't get viewer data - HTTP error`);
-        },
-        ontimeout: () => {
-          console.error(`[ERROR] [dgg-utils] couldn't get viewer data - HTTP timeout`);
+      const localStorageStreamInfo = window.localStorage.getItem(dggStreamInfoKey);
+      if (localStorageStreamInfo != null) {
+        let data = JSON.parse(localStorageStreamInfo);
+        if (DEBUG) data = DEBUG_VIEWER_DATA[0];
+        if (data.streams.youtube.live) {
+          viewersPill.style.display = "flex";
+          window.parent.document.getElementById("viewer-pill-views").textContent = data.streams.youtube.viewers.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        } else {
+          viewersPill.style.display = "none";
+          window.parent.document.getElementById('viewer-pill-views').textContent = '0';
         }
-      });
+      } else {
+        console.error(
+          `[ERROR] [dgg-utils] couldn't get the viewer data - "${dggStreamInfoKey}" local storage key is not available/equal to null`
+        );
+      }
     }
   }
 
