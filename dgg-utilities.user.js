@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         [dev] d.gg utilities
+// @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
 // @version      1.7
-// @description  [dev] small, but useful tools for both regular dggers and newbies alike
+// @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -342,7 +342,7 @@ function injectScript() {
             // if the API shows there's an update, show a message
             GM.xmlHttpRequest({
               method: "GET",
-              url: "https://vyneer.me/tools/script/dev",
+              url: "https://vyneer.me/tools/script",
               onload: (response) => {
                 if (response.status == 200) {
                   let data = JSON.parse(response.response);
