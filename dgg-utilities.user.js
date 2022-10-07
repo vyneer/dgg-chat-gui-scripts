@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         [dev] d.gg utilities
+// @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.10.07
-// @description  [dev] small, but useful tools for both regular dggers and newbies alike
+// @version      1.7
+// @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @match        *://*.destiny.gg/bigscreen*
@@ -18,7 +18,7 @@
 // ==/UserScript==
 
 // ==Changelog==
-// v1.7
+// v1.7 - 2022-09-30
 // * move all the settings into a custom menu
 // * speedup banned phrase detection
 // * better mutelinks mode support (now detects SOME links in your messages!)
@@ -346,7 +346,7 @@ function injectScript() {
             // if the API shows there's an update, show a message
             GM.xmlHttpRequest({
               method: "GET",
-              url: "https://vyneer.me/tools/script/dev",
+              url: "https://vyneer.me/tools/script",
               onload: (response) => {
                 if (response.status == 200) {
                   // violentmonkey bug workaround
