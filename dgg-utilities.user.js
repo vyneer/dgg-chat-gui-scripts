@@ -714,42 +714,18 @@ function injectScript() {
     let embedMatch = window.parent.location.hash.match(/^#youtube\/(.*)$/);
     if (embedMatch) {
       let embedId = embedMatch[1];
-      GM.xmlHttpRequest({
-        method: 'GET',
-        url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${embedId}`,
-        onload: (response) => {
-          if (errorAlert.style.display == "") {
-            errorAlert.style.display = "none";
-          }
-          if (response.status == 200) {
-            // violentmonkey bug workaround
-            let respText = response.response;
-            if (typeof(response.response) !== "string") {
-              respText = encoder.decode(response.response);
-            }
-            let data = JSON.parse(respText);
-            if ('author_name' in data) {
-              let channel = data['author_name'];
+      getYoutubeStreamMetadata(embedId, (metadata) => {
+        if ('author_name' in metadata) {
+          let channel = metadata['author_name'];
 
-              livePill.nextElementSibling.innerText = channel
-            }
-          } else {
-            console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
-          }
-        },
-        onerror: () => {
-          errorAlert.style.display = "";
-          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
-        },
-        ontimeout: () => {
-          errorAlert.style.display = "";
-          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
+          livePill.nextElementSibling.innerText = channel
         }
       });
     }
   };
 
   // make an observer that checks for steve going live
+  replaceYoutubePillName();
   let liveObserver = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
       for (let node of mutation.addedNodes) {
@@ -1231,52 +1207,27 @@ function injectScript() {
 
                 switch (platform) {
                   case "#youtube":
-                    GM.xmlHttpRequest({
-                      method: "GET",
-                      url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${id}`,
-                      onload: (response) => {
-                        if (errorAlert.style.display == "") {
-                          errorAlert.style.display = "none";
+                    getYoutubeStreamMetadata(id, (metadata) => {
+                      if ("title" in metadata && "author_name" in metadata) {
+                        let title = metadata["title"];
+                        let channel = metadata["author_name"];
+                        switch (config.youtubeEmbedFormat) {
+                          case 2:
+                            embedNode.text = `${platform}/${id} (${channel})`;
+                            break;
+                          case 3:
+                            embedNode.text = `${platform}/${id} (${title})`;
+                            break;
+                          case 4:
+                            embedNode.text = `${platform}/${channel}`;
+                            break;
+                          case 5:
+                            embedNode.text = `${platform}/${title}`;
+                            break;
                         }
-                        if (response.status == 200) {
-                          // violentmonkey bug workaround
-                          let respText = response.response;
-                          if (typeof(response.response) !== "string") {
-                            respText = encoder.decode(response.response);
-                          }
-                          let data = JSON.parse(respText);
-                          if ("title" in data && "author_name" in data) {
-                            let title = data["title"];
-                            let channel = data["author_name"];
-                            switch (config.youtubeEmbedFormat) {
-                              case 2:
-                                embedNode.text = `${platform}/${id} (${channel})`;
-                                break;
-                              case 3:
-                                embedNode.text = `${platform}/${id} (${title})`;
-                                break;
-                              case 4:
-                                embedNode.text = `${platform}/${channel}`;
-                                break;
-                              case 5:
-                                embedNode.text = `${platform}/${title}`;
-                                break;
-                            }
-                          }
-                        } else {
-                          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
-                        }
-                      },
-                      onerror: () => {
-                        errorAlert.style.display = "";
-                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
-                      },
-                      ontimeout: () => {
-                        errorAlert.style.display = "";
-                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
                       }
                     });
-                    break;
+                  break;
                 }
               });
           }
@@ -2571,4 +2522,38 @@ function injectScript() {
       ).update();
     }
   });
+
+  // helper function to query youtube with a stream id to get metadata about that stream, including the stream's title and the channel's name
+  // the metadata is passed into the given callback function
+  function getYoutubeStreamMetadata(youTubeStreamId, callback) {
+    GM.xmlHttpRequest({
+      method: 'GET',
+      url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${youTubeStreamId}`,
+      onload: (response) => {
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
+        if (response.status == 200) {
+          // violentmonkey bug workaround
+          let respText = response.response;
+          if (typeof(response.response) !== "string") {
+            respText = encoder.decode(response.response);
+          }
+          let data = JSON.parse(respText);
+
+          callback(data);
+        } else {
+          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
+        }
+      },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
+      }
+    });
+  }
 }
