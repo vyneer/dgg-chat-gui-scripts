@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.6
+// @version      1.7
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
+// @match        *://*.destiny.gg/bigscreen*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
 // @run-at       document-start
 // @allFrames    true
@@ -17,6 +18,18 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.7 - 2022-09-30
+// * move all the settings into a custom menu
+// * speedup banned phrase detection
+// * better mutelinks mode support (now detects SOME links in your messages!)
+// * message gets scanned on context menu paste now as well
+// * add a feature to show destiny's last vod on embed check
+// * slight sticky mentions visibility improvement
+// * script should work on strims.gg now
+// * new svg icon
+// * focus the chat input after double clicking a username to copy to input (big thanks to @mattroseman <3)
+// * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
+// * switch to the timestamp update model (might be buggy, but hopefully not)
 // v1.6 - 2022-04-23
 // * add an option to prevent you from sending a message containing a banned/nuked phrase
 // * add an option to format yt embeds directly in messages
@@ -39,9 +52,9 @@
 // * add an option to see title of twitch embeds
 // * now shows the nuked phrases when you hover over the nuke button
 // * set saturation of embed icon to 0 (because win 11 made the emoji purple MMMM)
-// v1.4.1 - 2021-10-13
-// * fix mutelinks icon not moving based on the amount of whispers
-// * replace vars with lets
+
+// temporary workaround until new violentmonkey version
+const encoder = new TextDecoder("utf-8");
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
@@ -72,9 +85,36 @@ const timeOptions = {
   minute: "2-digit",
 };
 
+const mutelinksChecklist = [
+  "https://",
+  "http://",
+  "www.",
+  ".com",
+  ".org",
+  ".ru",
+  ".net",
+  ".uk",
+  ".au",
+  ".in",
+  ".de",
+  ".ir",
+  ".ca",
+  ".gov",
+  ".be",
+  ".tv",
+  ".it"
+];
+
 let phrases = [];
+let phrasesEtag = "";
 let nukes = [];
+let nukesCompiled = [];
+let mutelinks = false;
 let foundPhraseOrNuke = false;
+
+let nukesTimestamp = 0;
+let mutelinksTimestamp = 0;
+let phrasesTimestamp = 0;
 
 class ConfigItem {
   constructor(keyName, defaultValue) {
@@ -88,6 +128,7 @@ const configItems = {
   embedIconStyle    : new ConfigItem("embedIconStyle",     1       ),
   doubleClickCopy   : new ConfigItem("doubleClickCopy",    false   ),
   embedsOnLaunch    : new ConfigItem("embedsOnLaunch",     false   ),
+  showLastVOD       : new ConfigItem("showLastVOD",        false   ),
   lastEmbeds        : new ConfigItem("lastEmbeds",         false   ),
   lastIfNone        : new ConfigItem("lastIfNone",         false   ),
   embedTime         : new ConfigItem("embedTime",          30      ),
@@ -98,7 +139,9 @@ const configItems = {
   nukeColor         : new ConfigItem("nukeColor",          "1f1500"),
   mutelinksColor    : new ConfigItem("mutelinksColor",     "120016"),
   customPhrases     : new ConfigItem("customPhrases",      []      ),
+  customPhrasesSoft : new ConfigItem("customPhrasesSoft",  []      ),
   customColor       : new ConfigItem("customColor",        "1f0000"),
+  customSoftColor   : new ConfigItem("customSoftColor",    "260019"),
   editEmbeds        : new ConfigItem("editEmbeds",         false   ),
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
@@ -184,9 +227,84 @@ function injectScript() {
   let chatlines = document.querySelector(".chat-lines");
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
-  let livePill = !window.parent.location.href.includes("embed")
+  let livePill = undefined;
+  
+  try {
+    livePill = !window.parent.location.href.includes("embed")
     ? window.parent.document.querySelector("#host-pill-type")
-    : undefined;
+    : undefined
+  } catch (e) {
+    console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "change title on live" feature wont work - ${e}`);
+  }
+
+  let utilSettingsStyle = document.createElement("style");
+  let utilSettingsStyleString = `
+    #util-settings-btn {
+        width: 95%;
+        height: 32px;
+        color: #B9B9B9;
+        background-color: #030303;
+        margin-left: 2.5%;
+    }
+    
+    #util-settings-btn:hover {
+        cursor: pointer;
+        border: 2px solid #B9B9B9;
+    }
+  
+    #util-settings #util-settings-form {
+        margin: .9em 0;
+    }
+
+    #util-settings .form-group {
+        margin: .9em .9em;
+        display: block;
+        position: relative
+    }
+
+    #util-settings h4 {
+        font-size: 0.9em;
+        margin-top: 1.8em;
+        margin-bottom: .9em;
+        padding-left: .9em;
+        color: #494949;
+        text-transform: uppercase;
+        font-weight: 600
+    }
+
+    #util-settings label {
+        display: inline-block;
+        font-weight: normal;
+        max-width: 100%;
+        margin-bottom: .6em
+    }
+
+    #util-settings .checkbox label {
+        margin-bottom: 0;
+        font-weight: 400;
+        max-width: 100%;
+        cursor: pointer;
+        display: flex;
+        justify-items: center;
+        align-items: center
+    }
+
+    #util-settings .checkbox input {
+        margin: 0 .3em 0 0;
+        line-height: normal;
+        box-sizing: border-box;
+        padding: 0
+    }
+
+    #util-settings select {
+        border-radius: .25em;
+        padding: .3em;
+        width: 100%
+    }
+  `
+  utilSettingsStyle.innerHTML = utilSettingsStyleString;
+  utilSettingsStyle.id = "utilSettingsStyle";
+  document.head.appendChild(utilSettingsStyle);
 
   let alertAnimationStyle = document.createElement("style");
   let keyFrames = `
@@ -213,18 +331,6 @@ function injectScript() {
   alertAnimationStyle.innerHTML = keyFrames;
   document.head.appendChild(alertAnimationStyle);
 
-  let mutelinksColorStyle = document.createElement("style");
-  let colorStyle = `
-  :root {
-    --mutelinks-color: #111;
-  }
-
-  #chat-input-control {
-    background-color: var(--mutelinks-color);
-  }`;
-  mutelinksColorStyle.innerHTML = colorStyle;
-  mutelinksColorStyle.id = "mutelinksColorStyle";
-
   // make an observer to show an update message after the "connected" alert in chat
   let updateObserver = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
@@ -242,18 +348,33 @@ function injectScript() {
               method: "GET",
               url: "https://vyneer.me/tools/script",
               onload: (response) => {
-                let data = JSON.parse(response.response);
-                if ("link" in data && "version" in data) {
-                  if (GM_info.script.version < data.version) {
-                    new DGGMsg(
-                      `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
-                      "msg-info msg-historical",
-                      ""
-                    );
-                    chatlines.scrollTop = chatlines.scrollHeight;
+                if (response.status == 200) {
+                  // violentmonkey bug workaround
+                  let respText = response.response;
+                  if (typeof(response.response) !== "string") {
+                    respText = encoder.decode(response.response);
                   }
+                  let data = JSON.parse(respText);
+                  if ("link" in data && "version" in data) {
+                    if (GM_info.script.version < data.version) {
+                      new DGGMsg(
+                        `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
+                        "msg-info msg-historical",
+                        ""
+                      );
+                      chatlines.scrollTop = chatlines.scrollHeight;
+                    }
+                  }
+                } else {
+                  console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP status code: ${response.status} - ${response.statusText}`);
                 }
               },
+              onerror: () => {
+                console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP error`);
+              },
+              ontimeout: () => {
+                console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP timeout`);
+              }
             });
 
             // show embeds on launch
@@ -320,7 +441,7 @@ function injectScript() {
   if (config.embedIconStyle !== 1) {
     embedsButton_i.innerHTML = "🎬";
   } else {
-    embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3Csvg viewBox='9 5 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' stroke='white' d='M10,10 l0,-1 l7,-3 l0,1 l-7,3 l0,5 l7,0 l0,-5 l-7,0' /%3E%3C/svg%3E")`;
+    embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3C%3Fxml version='1.0' encoding='UTF-8' standalone='no'%3F%3E%3Csvg width='25' height='25' viewBox='-25 -10 150 150' version='1.1' id='svg5' xml:space='preserve' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg'%3E%3Cdefs id='defs2' /%3E%3Cpath style='opacity:1;fill:%23ffffff;fill-opacity:1;stroke-width:0.406658' d='m 92.631299,98.472455 c 0,3.664485 -3.18611,6.614595 -7.14375,6.614595 H 10.399791 c -3.9576372,0 -7.0776042,-3.01626 -7.0776042,-6.680745 0,-8.21058 0.06729,-51.199364 0.06729,-57.368996 L 92.635479,40.896992' id='lower' /%3E%3Crect style='opacity:1;fill:%23ffffff;fill-opacity:1;stroke-width:0.334081' id='upper' width='89.762489' height='14.542242' x='-6.0129457' y='22.639624' transform='matrix(0.96526009,-0.26129094,0.25636721,0.96657946,0,0)' /%3E%3C/svg%3E%0A")`;
   }
   embedsButton_i.style.fontStyle = "normal";
   embedsButton_i.style.fontSize = "larger";
@@ -335,8 +456,24 @@ function injectScript() {
       break;
   }
 
-  // making a button for the nuke alert
+  // making an error alert
   let chatWhispersArea = document.querySelectorAll(".chat-tools-group")[0];
+  let errorAlert = document.createElement("a");
+  errorAlert.id = "error-alert";
+  errorAlert.className = "chat-tool-btn";
+  errorAlert.title = "Can't connect to vyneer.me";
+  errorAlert.style.cursor = "unset";
+  errorAlert.style.display = "none";
+  let errorAlert_i = document.createElement("i");
+  errorAlert_i.className = "btn-icon";
+  errorAlert_i.innerHTML = "⚠️";
+  errorAlert_i.style.fontStyle = "normal";
+  errorAlert_i.style.fontSize = "larger";
+  errorAlert_i.style.textAlign = "center";
+  errorAlert_i.style.color = "red";
+  errorAlert_i.style.opacity = 1;
+
+  // making a button for the nuke alert
   let nukeAlertButton = document.createElement("a");
   nukeAlertButton.id = "nukes-btn";
   nukeAlertButton.className = "chat-tool-btn";
@@ -391,19 +528,100 @@ function injectScript() {
   // appending buttons to the right area on screen
   sendAnywayButton.appendChild(sendAnywayButton_i);
   embedsButton.appendChild(embedsButton_i);
+  errorAlert.appendChild(errorAlert_i);
   nukeAlertButton.appendChild(nukeAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_span);
   chatToolsArea.prepend(embedsButton);
   chatToolsArea.prepend(sendAnywayButton);
+  utilitiesButtons.appendChild(errorAlert);
   utilitiesButtons.appendChild(nukeAlertButton);
   utilitiesButtons.appendChild(linksAlertButton);
   chatWhispersArea.appendChild(utilitiesButtons);
 
-  // creating a settings title
-  let settingsArea = document.querySelector("#chat-settings-form");
+  // creating the settings page
+  // make sure we only create the nanoscroller once
+  let settingsInit = false;
+  // there's like a billion layers here, very annoying and ugly
+  // this is the main one
+  let utilSettings = document.createElement("div");
+  utilSettings.id = "util-settings";
+  utilSettings.className = "chat-menu right";
+  document.querySelector("#chat").appendChild(utilSettings);
+  // making a button to open the settings menu
+  let settingsButton = document.createElement("button");
+  settingsButton.id = "util-settings-btn";
+  settingsButton.innerHTML = "d.gg utilities settings";
+  settingsButton.addEventListener("click", () => {
+    // it closes the vanilla chat settings menu first (with a click, to avoid doubleclicks later)
+    document.querySelector("#chat-settings-btn").click();
+    // show dgg util settings with a class change
+    utilSettings.classList.toggle("active");
+    // if we havent opened the dgg utils settings pane before, make it scrollable with the nanoscroller thing 
+    if (!settingsInit) {
+      settingsInit = true;
+      $("#util-settings .nano").nanoScroller();
+    }
+  })
+  // make sure we close the settings pane when we click on any of the other buttons in the bottom panel
+  document.querySelectorAll("#chat-emoticon-btn, #chat-whisper-btn, #chat-settings-btn, #chat-users-btn").forEach((el) => {
+    el.addEventListener("click", () => {
+      if (utilSettings.classList.contains("active")) {
+        utilSettings.classList.remove("active");
+      }
+    })
+  })
+  // make sure we close the settings pane when we click on the bottom panel itself
+  document.querySelector("#chat-tools-wrap").addEventListener("click", () => {
+    if (utilSettings.classList.contains("active")) {
+      utilSettings.classList.remove("active");
+    }
+  })
+  // make sure we close the settings pane when we click on chat
+  document.querySelector("#chat-output-frame").addEventListener("click", () => {
+    if (utilSettings.classList.contains("active")) {
+      utilSettings.classList.remove("active");
+    }
+  })
+  // append the button
+  document.querySelector("#chat-settings-form").appendChild(settingsButton);
+  // another layer...
+  let settingsAreaOuter = document.createElement("div");
+  settingsAreaOuter.className = "chat-menu-inner";
+  // create the toolbar
+  let utilToolbar = document.createElement("div");
+  utilToolbar.className = "toolbar";
+  let utilToolbarInner = document.createElement("h5");
+  let utilToolbarInnerTitle = document.createElement("span");
+  utilToolbarInnerTitle.innerHTML = `d.gg utilities v${GM_info.script.version}`;
+  utilToolbarInner.appendChild(utilToolbarInnerTitle);
+  // create the toolbar close button
+  let utilToolbarInnerClose = document.createElement("i");
+  utilToolbarInnerClose.className = "chat-menu-close";
+  // close the settings pane when clicking on the button
+  utilToolbarInnerClose.addEventListener("click", () => {
+    utilSettings.classList.remove("active");
+  })
+  utilToolbarInner.appendChild(utilToolbarInnerClose);
+  utilToolbar.appendChild(utilToolbarInner);
+  settingsAreaOuter.appendChild(utilToolbar);
+  // combined nanoscroller layer
+  let nano = document.createElement("div");
+  nano.className = "scrollable nano has-scrollbar";
+  settingsAreaOuter.appendChild(nano);
+  // content layer
+  let nanoContent = document.createElement("div");
+  nanoContent.className = "content nano-content";
+  nanoContent.tabIndex = "0";
+  nanoContent.style = "right: -17px;";
+  nano.appendChild(nanoContent);
+  // finally, our settings area
+  let settingsArea = document.createElement("div");
+  settingsArea.id = "util-settings-form";
+  nanoContent.appendChild(settingsArea);
+  utilSettings.appendChild(settingsAreaOuter);
   let title = document.createElement("h4");
-  title.innerHTML = `d.gg utilities v${GM_info.script.version}`;
+  title.innerHTML = `Utilities General Settings`;
   // appending it to the settings menu
   settingsArea.appendChild(title);
 
@@ -446,6 +664,7 @@ function injectScript() {
     }
 
     textarea.value += `${username} `;
+    textarea.focus();
   }
 
   // creating a double click to copy setting
@@ -473,14 +692,19 @@ function injectScript() {
   }
   doubleClickCopyLabel.prepend(doubleClickCopyCheck);
 
-  let ogtitle = window.parent.document.title;
+  let ogtitle = undefined;
+  try {
+    ogtitle = window.parent.document.title;
+  } catch (e) {
+    console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the og title of the stream, the "change title on live" feature wont work - ${e}`)
+  }
 
   let checkLive = (node) => {
     if (node.textContent === "LIVE") {
       if (!window.parent.document.title.includes("LIVE")) {
         ogtitle = window.parent.document.title;
-      }
-      window.parent.document.title = `LIVE - ${ogtitle}`;
+        window.parent.document.title = `LIVE - ${ogtitle}`;
+      } 
     } else {
       window.parent.document.title = ogtitle;
     }
@@ -568,7 +792,7 @@ function injectScript() {
     switch (config.embedIconStyle) {
       case 1:
         embedsButton_i.innerHTML = "";
-        embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3Csvg viewBox='9 5 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' stroke='white' d='M10,10 l0,-1 l7,-3 l0,1 l-7,3 l0,5 l7,0 l0,-5 l-7,0' /%3E%3C/svg%3E")`;
+        embedsButton_i.style.backgroundImage = `url("data:image/svg+xml,%3C%3Fxml version='1.0' encoding='UTF-8' standalone='no'%3F%3E%3Csvg width='25' height='25' viewBox='-25 -10 150 150' version='1.1' id='svg5' xml:space='preserve' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg'%3E%3Cdefs id='defs2' /%3E%3Cpath style='opacity:1;fill:%23ffffff;fill-opacity:1;stroke-width:0.406658' d='m 92.631299,98.472455 c 0,3.664485 -3.18611,6.614595 -7.14375,6.614595 H 10.399791 c -3.9576372,0 -7.0776042,-3.01626 -7.0776042,-6.680745 0,-8.21058 0.06729,-51.199364 0.06729,-57.368996 L 92.635479,40.896992' id='lower' /%3E%3Crect style='opacity:1;fill:%23ffffff;fill-opacity:1;stroke-width:0.334081' id='upper' width='89.762489' height='14.542242' x='-6.0129457' y='22.639624' transform='matrix(0.96526009,-0.26129094,0.25636721,0.96657946,0,0)' /%3E%3C/svg%3E%0A")`;
         break;
 
       case 2:
@@ -598,6 +822,19 @@ function injectScript() {
   });
 
   embedIconStyleGroup.appendChild(embedIconStyleSelect);
+
+  // creating a show last steve vod setting
+  let showLastVODGroup = document.createElement("div");
+  showLastVODGroup.className = "form-group checkbox";
+  let showLastVODLabel = document.createElement("label");
+  showLastVODLabel.innerHTML = "Show Destiny's last vod when you check embeds";
+  showLastVODGroup.appendChild(showLastVODLabel);
+  let showLastVODCheck = document.createElement("input");
+  showLastVODCheck.name = "showLastVOD";
+  showLastVODCheck.type = "checkbox";
+  showLastVODCheck.checked = config.showLastVOD;
+  showLastVODCheck.addEventListener("change", () => config.showLastVOD = showLastVODCheck.checked);
+  showLastVODLabel.prepend(showLastVODCheck);
 
   // creating a show embeds on connect setting
   let embedsOnLaunchGroup = document.createElement("div");
@@ -750,9 +987,11 @@ function injectScript() {
   phraseColorArea.value = config.phraseColor;
   phraseColorArea.style.marginLeft = ".6em";
   phraseColorArea.style.width = "60px";
+  phraseColorArea.style.backgroundColor = `#${config.phraseColor}`;
   phraseColorArea.addEventListener("change", () => {
     if (phraseColorArea.value.length > 0) {
       config.phraseColor = phraseColorArea.value;
+		phraseColorArea.style.backgroundColor = `#${config.phraseColor}`;
     } else {
       config.phraseColor = configItems.phraseColor.defaultValue;
     }
@@ -776,36 +1015,30 @@ function injectScript() {
   nukeColorArea.value = config.nukeColor;
   nukeColorArea.style.marginLeft = ".6em";
   nukeColorArea.style.width = "60px";
+  nukeColorArea.style.backgroundColor = `#${config.nukeColor}`;
   nukeColorArea.addEventListener("change", () => {
     if (nukeColorArea.value.length > 0) {
       config.nukeColor = nukeColorArea.value;
+		nukeColorArea.style.backgroundColor = `#${config.nukeColor}`;
     } else {
       config.nukeColor = configItems.nukeColor.defaultValue;
     }
   });
   nukeColorGroup.appendChild(nukeColorArea);
 
-  // creating a setting to prevent enter from working if you have a banned phrase in the message
+  // creating a setting to color the textarea if mutelinks is on and you typed a link
   let colorOnMutelinksGroup = document.createElement("div");
   colorOnMutelinksGroup.className = "form-group checkbox";
   let colorOnMutelinksLabel = document.createElement("label");
-  colorOnMutelinksLabel.innerHTML = "Color the text area if mutelinks is on";
+  colorOnMutelinksLabel.innerHTML = "Color the text area if you type a link when mutelinks is on (not every link gets detected)";
+  colorOnMutelinksLabel.title =
+    "Keep in mind that it doesn't detect every single possible link, so be careful anyway";
   colorOnMutelinksGroup.appendChild(colorOnMutelinksLabel);
   let colorOnMutelinksCheck = document.createElement("input");
   colorOnMutelinksCheck.name = "colorOnMutelinks";
   colorOnMutelinksCheck.type = "checkbox";
   colorOnMutelinksCheck.checked = config.colorOnMutelinks;
-  colorOnMutelinksCheck.addEventListener("change", () => {
-    config.colorOnMutelinks = colorOnMutelinksCheck.checked;
-    if (config.colorOnMutelinks) {
-      document.head.appendChild(mutelinksColorStyle);
-    } else {
-      document.querySelector("#mutelinksColorStyle").remove();
-    }
-  });
-  if (config.colorOnMutelinks) {
-    document.head.appendChild(mutelinksColorStyle);
-  }
+  colorOnMutelinksCheck.addEventListener("change", () => config.colorOnMutelinks = colorOnMutelinksCheck.checked);
   colorOnMutelinksLabel.prepend(colorOnMutelinksCheck);
 
   // creating an phrase textarea color setting
@@ -825,9 +1058,11 @@ function injectScript() {
   mutelinksColorArea.value = config.mutelinksColor;
   mutelinksColorArea.style.marginLeft = ".6em";
   mutelinksColorArea.style.width = "60px";
+  mutelinksColorArea.style.backgroundColor = `#${config.mutelinksColor}`;
   mutelinksColorArea.addEventListener("change", () => {
     if (mutelinksColorArea.value.length > 0) {
       config.mutelinksColor = mutelinksColorArea.value;
+		mutelinksColorArea.style.backgroundColor = `#${config.mutelinksColor}`;
     } else {
       config.mutelinksColor = configItems.mutelinksColor.defaultValue;
     }
@@ -858,6 +1093,32 @@ function injectScript() {
   });
   customPhrasesGroup.appendChild(customPhrasesArea);
 
+  // creating a custom soft phrases setting
+  let customPhrasesSoftGroup = document.createElement("div");
+  customPhrasesSoftGroup.className = "form-group row";
+  let customPhrasesSoftLabel = document.createElement("label");
+  customPhrasesSoftLabel.innerHTML = "Custom Soft Alert Phrases";
+  customPhrasesSoftLabel.title =
+      "Phrases that will color the input area red if you type them in (exact match)";
+  customPhrasesSoftGroup.appendChild(customPhrasesSoftLabel);
+  let customPhrasesSoftArea = document.createElement("textarea");
+  customPhrasesSoftArea.style.resize = "vertical";
+  customPhrasesSoftArea.className = "form-control";
+  customPhrasesSoftArea.placeholder =
+      "Comma separated ... (regex not supported)";
+  customPhrasesSoftArea.value =
+      config.customPhrasesSoft == "[]" ? "" : config.customPhrasesSoft;
+  customPhrasesSoftArea.addEventListener("change", () => {
+      let val = customPhrasesSoftArea.value.split(",");
+      if (customPhrasesSoftArea.value.length > 0) {
+          config.customPhrasesSoft = val;
+      } else {
+          config.customPhrasesSoft =
+              configItems.customPhrasesSoft.defaultValue;
+      }
+  });
+  customPhrasesSoftGroup.appendChild(customPhrasesSoftArea);
+  
   // creating an custom phrase textarea color setting
   let customColorGroup = document.createElement("div");
   customColorGroup.className = "form-group row";
@@ -875,14 +1136,44 @@ function injectScript() {
   customColorArea.value = config.customColor;
   customColorArea.style.marginLeft = ".6em";
   customColorArea.style.width = "60px";
+  customColorArea.style.backgroundColor = `#${config.customColor}`;
   customColorArea.addEventListener("change", () => {
     if (customColorArea.value.length > 0) {
       config.customColor = customColorArea.value;
+		customColorArea.style.backgroundColor = `#${config.customColor}`;
     } else {
       config.customColor = configItems.customColor.defaultValue;
     }
   });
   customColorGroup.appendChild(customColorArea);
+
+  // creating an custom soft phrase textarea color setting
+  let customSoftColorGroup = document.createElement("div");
+  customSoftColorGroup.className = "form-group row";
+  let customSoftColorLabel = document.createElement("label");
+  customSoftColorLabel.innerHTML = "Text area color on custom soft phrase";
+  customSoftColorLabel.title =
+      "The color that text area changes when you type a custom soft phrase";
+  customSoftColorLabel.style.marginBottom = 0;
+  customSoftColorGroup.appendChild(customSoftColorLabel);
+  let customSoftColorArea = document.createElement("input");
+  customSoftColorArea.name = "customSoftColorArea";
+  customSoftColorArea.type = "text";
+  customSoftColorArea.className = "form-control";
+  customSoftColorArea.placeholder = configItems.customSoftColor.defaultValue;
+  customSoftColorArea.value = config.customSoftColor;
+  customSoftColorArea.style.marginLeft = ".6em";
+  customSoftColorArea.style.width = "60px";
+  customSoftColorArea.style.backgroundColor = `#${config.customSoftColor}`;
+  customSoftColorArea.addEventListener("change", () => {
+      if (customSoftColorArea.value.length > 0) {
+          config.customSoftColor = customSoftColorArea.value;
+          customSoftColorArea.style.backgroundColor = `#${config.customSoftColor}`;
+      } else {
+          config.customSoftColor = configItems.customSoftColor.defaultValue;
+      }
+  });
+  customSoftColorGroup.appendChild(customSoftColorArea);
 
   // make an observer that checks for embeds
   let embedObserver = new MutationObserver((mutations) => {
@@ -904,26 +1195,46 @@ function injectScript() {
                       method: "GET",
                       url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${id}`,
                       onload: (response) => {
-                        let data = JSON.parse(response.response);
-                        if ("title" in data && "author_name" in data) {
-                          let title = data["title"];
-                          let channel = data["author_name"];
-                          switch (config.youtubeEmbedFormat) {
-                            case 2:
-                              embedNode.text = `${platform}/${id} (${channel})`;
-                              break;
-                            case 3:
-                              embedNode.text = `${platform}/${id} (${title})`;
-                              break;
-                            case 4:
-                              embedNode.text = `${platform}/${channel}`;
-                              break;
-                            case 5:
-                              embedNode.text = `${platform}/${title}`;
-                              break;
+                        if (errorAlert.style.display == "") {
+                          errorAlert.style.display = "none";
+                        }
+                        if (response.status == 200) {
+                          // violentmonkey bug workaround
+                          let respText = response.response;
+                          if (typeof(response.response) !== "string") {
+                            respText = encoder.decode(response.response);
                           }
+                          let data = JSON.parse(respText);
+                          if ("title" in data && "author_name" in data) {
+                            let title = data["title"];
+                            let channel = data["author_name"];
+                            switch (config.youtubeEmbedFormat) {
+                              case 2:
+                                embedNode.text = `${platform}/${id} (${channel})`;
+                                break;
+                              case 3:
+                                embedNode.text = `${platform}/${id} (${title})`;
+                                break;
+                              case 4:
+                                embedNode.text = `${platform}/${channel}`;
+                                break;
+                              case 5:
+                                embedNode.text = `${platform}/${title}`;
+                                break;
+                            }
+                          }
+                        } else {
+                          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
                         }
                       },
+                      onerror: () => {
+                        errorAlert.style.display = "";
+                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
+                      },
+                      ontimeout: () => {
+                        errorAlert.style.display = "";
+                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
+                      }
                     });
                     break;
                 }
@@ -986,6 +1297,8 @@ function injectScript() {
     for (let i = 1; i <= 50; i++) {
       flairIds.push(`flair${i}`);
     }
+    // Add other flair names
+    flairIds.push("bot");
     return flairIds;
   }
   // removes any flairs, previously created, that don't have style rules associated with them
@@ -1132,6 +1445,9 @@ function injectScript() {
       position: sticky;
       top: 0px;
       z-index: 121;
+      border-bottom-style: inset;
+      border-bottom-width: 2px;
+      border-bottom-color: #080808;
     }
   `;
   toggleStickyMentions(config.stickyMentions);
@@ -1242,6 +1558,7 @@ function injectScript() {
   settingsArea.appendChild(embedIconStyleGroup);
   settingsArea.appendChild(hideFlairsGroup);
   settingsArea.appendChild(embedsTitle);
+  settingsArea.appendChild(showLastVODGroup);
   settingsArea.appendChild(embedsOnLaunchGroup);
   settingsArea.appendChild(lastEmbedsGroup);
   settingsArea.appendChild(lastIfNoneGroup);
@@ -1256,7 +1573,9 @@ function injectScript() {
   settingsArea.appendChild(nukeColorGroup);
   settingsArea.appendChild(mutelinksColorGroup);
   settingsArea.appendChild(customPhrasesGroup);
+  settingsArea.appendChild(customPhrasesSoftGroup);
   settingsArea.appendChild(customColorGroup);
+  settingsArea.appendChild(customSoftColorGroup);
   let experimentalTitle = document.createElement("h4");
   experimentalTitle.innerHTML = "Utilities Experimental Settings";
   experimentalTitle.style.marginBottom = "0px";
@@ -1310,7 +1629,8 @@ function injectScript() {
           (location.search ? location.search : "")
         ).replace(/\/$/, "");
       } catch (e) {
-        console.error(e);
+        console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the bigscreen url, setting it to "https://www.destiny.gg/bigscreen" - ${e}`);
+        this.url = "https://www.destiny.gg/bigscreen"
       }
     }
 
@@ -1507,6 +1827,18 @@ function injectScript() {
       msg.appendChild(msgInnerText);
       chatlines.appendChild(msg);
     }
+
+    update() {
+      if (config.alwaysScrollDown) {
+        chatlines.scrollTop = chatlines.scrollHeight;
+      } else {
+        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+          chatlines.scrollTop = chatlines.scrollHeight;
+        } else {
+          chatlines.scrollLeft = chatlines.scrollWidth;
+        }
+      }
+    }
   }
 
   // function to get phrases
@@ -1514,103 +1846,317 @@ function injectScript() {
     // download the ban/mute phrases to an array
     GM.xmlHttpRequest({
       method: "GET",
-      url: "https://vyneer.me/tools/phrases",
+      url: "https://vyneer.me/tools/phrases?ts=1",
       onload: (response) => {
-        let data = JSON.parse(response.response);
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
         if (response.status == 200) {
+          // violentmonkey bug workaround
+          let respText = response.response;
+          if (typeof(response.response) !== "string") {
+            respText = encoder.decode(response.response);
+          }
+          let parsedResponse = JSON.parse(respText);
+          let data = [];
+          if (parsedResponse && parsedResponse.data) {
+            data = parsedResponse.data;
+          }
+          phrasesTimestamp = parsedResponse.updatedAt;
           phrases = [];
           data.forEach((entry) => {
-            phrases.push(entry);
+            cleanPhrase = entry.phrase.trim().toLowerCase();
+            if (/^\/.*\/$/.test(cleanPhrase) && cleanPhrase.length > 2) {
+              const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
+              const regex = new RegExp(regexString, "i");
+              phrases.push(regex);
+            } else {
+              phrases.push(entry.phrase);
+            }
           });
         } else {
-          console.log(`dgg-utils error, can't get phrases - ${response.status}`);
+          console.error(`[ERROR] [dgg-utils] couldn't get the phrase data, going to try to get phrases from mitchdev.net - URL: "https://vyneer.me/tools/phrases", HTTP status code: ${response.status} - ${response.statusText}`);
+          GM.xmlHttpRequest({
+            method: "GET",
+            url: "https://mitchdev.net/api/dgg/list",
+            headers: {
+              "If-None-Match": `W/"${phrasesEtag}"`
+            },
+            onload: (response) => {
+              if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
+                // violentmonkey bug workaround
+                let respText = response.response;
+                if (typeof(response.response) !== "string") {
+                  respText = encoder.decode(response.response);
+                }
+                let data = JSON.parse(respText);
+                response.responseHeaders.split(/\r?\n/).forEach(el => {
+                  const splitHeader = el.split(": ");
+                  if (splitHeader[0] == "etag") {
+                    phrasesEtag = splitHeader[1].substring(3, splitHeader[1].length - 1)
+                  }
+                });
+                phrases = [];
+                data.forEach((entry) => {
+                  cleanPhrase = entry.phrase.trim().toLowerCase();
+                  if (/^\/.*\/$/.test(cleanPhrase) && cleanPhrase.length > 2) {
+                    const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
+                    const regex = new RegExp(regexString, "i");
+                    phrases.push(regex);
+                  } else {
+                    phrases.push(entry.phrase);
+                  }
+                });
+              } else if (response.status != 304) {
+                console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP status code: ${response.status} - ${response.statusText}`);
+              }
+            },
+            onerror: () => {
+              console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP error`);
+            },
+            ontimeout: () => {
+              console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP timeout`);
+            }
+          });
         }
       },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the phrase data, going to try to get phrases from mitchdev.net - URL: "https://vyneer.me/tools/phrases", HTTP error`);
+        GM.xmlHttpRequest({
+          method: "GET",
+          url: "https://mitchdev.net/api/dgg/list",
+          headers: {
+            "If-None-Match": `W/"${phrasesEtag}"`
+          },
+          onload: (response) => {
+            if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
+              // violentmonkey bug workaround
+              let respText = response.response;
+              if (typeof(response.response) !== "string") {
+                respText = encoder.decode(response.response);
+              }
+              let data = JSON.parse(respText);
+              response.responseHeaders.split(/\r?\n/).forEach(el => {
+                const splitHeader = el.split(": ");
+                if (splitHeader[0] == "etag") {
+                  phrasesEtag = splitHeader[1].substring(3, splitHeader[1].length - 1)
+                }
+              });
+              phrases = [];
+              data.forEach((entry) => {
+                cleanPhrase = entry.phrase.trim().toLowerCase();
+                if (/^\/.*\/$/.test(cleanPhrase) && cleanPhrase.length > 2) {
+                  const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
+                  const regex = new RegExp(regexString, "i");
+                  phrases.push(regex);
+                } else {
+                  phrases.push(entry.phrase);
+                }
+              });
+            } else if (response.status != 304)  {
+              console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP status code: ${response.status} - ${response.statusText}`);
+            }
+          },
+          onerror: () => {
+            console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP error`);
+          },
+          ontimeout: () => {
+            console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP timeout`);
+          }
+        });
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the phrase data, going to try to get phrases from mitchdev.net - URL: "https://vyneer.me/tools/phrases", HTTP timeout`);
+        GM.xmlHttpRequest({
+          method: "GET",
+          url: "https://mitchdev.net/api/dgg/list",
+          headers: {
+            "If-None-Match": `W/"${phrasesEtag}"`
+          },
+          onload: (response) => {
+            if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
+              // violentmonkey bug workaround
+              let respText = response.response;
+              if (typeof(response.response) !== "string") {
+                respText = encoder.decode(response.response);
+              }
+              let data = JSON.parse(respText);
+              response.responseHeaders.split(/\r?\n/).forEach(el => {
+                const splitHeader = el.split(": ");
+                if (splitHeader[0] == "etag") {
+                  phrasesEtag = splitHeader[1].substring(3, splitHeader[1].length - 1)
+                }
+              });
+              phrases = [];
+              data.forEach((entry) => {
+                cleanPhrase = entry.phrase.trim().toLowerCase();
+                if (/^\/.*\/$/.test(cleanPhrase) && cleanPhrase.length > 2) {
+                  const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
+                  const regex = new RegExp(regexString, "i");
+                  phrases.push(regex);
+                } else {
+                  phrases.push(entry.phrase);
+                }
+              });
+            } else if (response.status != 304)  {
+              console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP status code: ${response.status} - ${response.statusText}`);
+            }
+          },
+          onerror: () => {
+            console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP error`);
+          },
+          ontimeout: () => {
+            console.error(`[ERROR] [dgg-utils] couldn't get the phrase data - URL: "https://mitchdev.net/api/dgg/list", HTTP timeout`);
+          }
+        });
+      }
     });
   }
 
   getPhrases();
+  
+  function textScanner(event) {
+    // ensure we dont fire on random empty keypresses
+    if (!(event.code == "ControlLeft" || event.code == "ControlRight" || event.code == "AltLeft" || event.code == "AltRight" || event.code == "ShiftLeft" || event.code == "ShiftRight" || event.code == "MetaLeft" || event.code == "MetaRight")) {
+      let text = textarea.value.toLowerCase();
+      let resultCustom;
+      let resultCustomSoft;
+      let resultLinks;
+      let resultNukes;
+      let result;
 
-  const matchStringOrRegex = (message, phrase) => {
-    const cleanMessage = message.trim();
-    const cleanPhrase = phrase.trim().toLowerCase();
-    if (/^\/.*\/$/.test(cleanPhrase)) {
-      const regexString = cleanPhrase.slice(1, cleanPhrase.length - 1);
-      if (cleanPhrase.length <= 2) return false;
-      const regex = new RegExp(regexString, "i");
-      return regex.test(cleanMessage);
+      if (phrases.length > 0) {
+        for (let entry of phrases) {
+          if (typeof(entry) === 'string') {
+            if (text.indexOf(entry) != -1) {
+              result = true;
+              break;
+          }
+          } else {
+            if (entry.test(text)) {
+              result = true;
+              break;
+            }
+          } 
+        }
+      }
+
+      if (nukesCompiled.length > 0) {
+        for (let entry of nukesCompiled) {
+          if (typeof(entry) === 'string') {
+            if (text.indexOf(entry) != -1) {
+              resultNukes = true;
+              break;
+          }
+          } else {
+            if (entry.test(text)) {
+              resultNukes = true;
+              break;
+            }
+          } 
+        }
+      }
+
+      if (mutelinks && config.colorOnMutelinks) {
+        for (let entry of mutelinksChecklist) {
+          if (text.indexOf(entry) != -1) {
+            resultLinks = true;
+            break;
+          }
+        }
+      }
+
+      if (config.customPhrases.length > 0) {
+        for (let entry of config.customPhrases) {
+          if (text.indexOf(entry) != -1) {
+            resultCustom = true;
+            break;
+          }
+        }
+      }
+
+      if (config.customPhrasesSoft.length > 0) {
+        resultCustomSoft = config.customPhrasesSoft.find((entry) => {
+            let regex = new RegExp(`\\b${entry}\\b`);
+            if (regex.test(text)) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+      }
+
+      if (result != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.phraseColor}`;
+        document.body.style.setProperty("--flashing-color", `#${config.phraseColor}`);
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "";
+        }
+      } else if (resultLinks != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.mutelinksColor}`;
+        document.body.style.setProperty("--flashing-color", `#${config.mutelinksColor}`);
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "";
+        }
+      } else if (resultCustom != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.customColor}`;
+        document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "";
+        } 
+      } else if (resultCustomSoft != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.customSoftColor}`;
+        document.body.style.setProperty(
+            "--flashing-color",
+            `#${config.customSoftColor}`
+        );
+        if (config.preventEnter) {
+            sendAnywayButton.style.display = "";
+        }
+      } else if (resultNukes != undefined) {
+        foundPhraseOrNuke = true;
+        textarea.style.backgroundColor = `#${config.nukeColor}`;
+        document.body.style.setProperty("--flashing-color", `#${config.nukeColor}`);
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "";
+        }
+      } else {
+        foundPhraseOrNuke = false;
+        if (textarea.style.backgroundColor != "") {
+          textarea.style.backgroundColor = "";
+        }
+        if (config.preventEnter) {
+          sendAnywayButton.style.display = "none";
+        }
+      }
     }
-    return message.includes(cleanPhrase);
-  };
+  }
 
+  let pasted = false;
+
+  // next 2 event listeners are for detecting pastes
+  // because right-click -> paste doesnt get detected by keyup
+  textarea.addEventListener("paste", () => {
+    pasted = true;
+  });
+  
+  textarea.addEventListener("input", (e) => {
+    if (pasted) {
+      textScanner(e);
+      pasted = false;
+    }
+  });
+  
   // adding an event listener to chat's input box
   // every time you press a key it checks whether your text has spooky phrases in it
-  textarea.addEventListener("keyup", () => {
-    let text = textarea.value.toLowerCase();
-    let resultCustom;
-    let resultNukes;
-    let result;
-
-    if (phrases.length > 0) {
-      result = phrases.find((entry) => {
-        if (matchStringOrRegex(text, entry.phrase)) {
-          return true;
-        } else {
-          return false;
-        }
-      });
-    }
-
-    if (nukes.length > 0) {
-      resultNukes = nukes.find((entry) => {
-        if (matchStringOrRegex(text, entry.word)) {
-          return true;
-        } else {
-          return false;
-        }
-      });
-    }
-
-    if (config.customPhrases.length > 0) {
-      resultCustom = config.customPhrases.find((entry) => {
-        if (text.includes(entry)) {
-          return true;
-        } else {
-          return false;
-        }
-      });
-    }
-
-    if (result != undefined) {
-      foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${config.phraseColor}`;
-      document.body.style.setProperty("--flashing-color", `#${config.phraseColor}`);
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "";
-      }
-    } else if (resultCustom != undefined) {
-      foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${config.customColor}`;
-      document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "";
-      }
-    } else if (resultNukes != undefined) {
-      foundPhraseOrNuke = true;
-      textarea.style.backgroundColor = `#${config.nukeColor}`;
-      document.body.style.setProperty("--flashing-color", `#${config.nukeColor}`);
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "";
-      }
-    } else {
-      foundPhraseOrNuke = false;
-      if (textarea.style.backgroundColor != "") {
-        textarea.style.backgroundColor = "";
-      }
-      if (config.preventEnter) {
-        sendAnywayButton.style.display = "none";
-      }
-    }
+  textarea.addEventListener("keyup", (e) => {
+      textScanner(e);
   });
 
   // function to simplify appending embeds
@@ -1624,23 +2170,13 @@ function injectScript() {
             } ${entry.count == 1 ? "embed" : "embeds"})`,
             "msg-status msg-historical",
             ""
-          );
+          ).update();
         } else {
           new DGGMsg(
             embedForm.format(entry.link, entry.channel, entry.title),
             "msg-status msg-historical",
             entry.timestamp
-          );
-        }
-
-        if (config.alwaysScrollDown) {
-          chatlines.scrollTop = chatlines.scrollHeight;
-        } else {
-          if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-            chatlines.scrollTop = chatlines.scrollHeight;
-          } else {
-            chatlines.scrollLeft = chatlines.scrollWidth;
-          }
+          ).update();
         }
       });
     } else {
@@ -1648,43 +2184,54 @@ function injectScript() {
         if (!ifnone) {
           new DGGMsg(
             `Looks like nobody embedded anything in the last ${config.embedTime} minutes.`,
-            "msg-status msg-error",
+            "msg-error",
             ""
-          );
+          ).update();
         } else {
           new DGGMsg(
             `Looks like nobody embedded anything in the last ${config.embedTime} minutes, showing you the last embeds instead.`,
-            "msg-status msg-error",
+            "msg-error",
             ""
-          );
+          ).update();
           GM.xmlHttpRequest({
             method: "GET",
             url: `https://vyneer.me/tools/embeds/last`,
             onload: (response) => {
-              let data = JSON.parse(response.response);
-              if (config.lastEmbeds) {
-                data = data.reverse();
+              if (errorAlert.style.display == "") {
+                errorAlert.style.display = "none";
               }
-              serveEmbeds(data, true, false);
+              if (response.status == 200) {
+                // violentmonkey bug workaround
+                let respText = response.response;
+                if (typeof(response.response) !== "string") {
+                  respText = encoder.decode(response.response);
+                }
+                let data = JSON.parse(respText);
+                if (config.lastEmbeds) {
+                  data = data.reverse();
+                }
+                serveEmbeds(data, true, false);
+              } else {
+                new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - URL: "https://vyneer.me/tools/embeds/last", HTTP status code: ${response.status} - ${response.statusText}`);
+              }
             },
+            onerror: () => {
+                new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP error`);
+            },
+            ontimeout: () => {
+                new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP timeout`);
+            }
           });
         }
       } else {
         new DGGMsg(
           `Looks like there's no data regarding the last embeds.`,
-          "msg-status msg-error",
+          "msg-error",
           ""
-        );
-      }
-
-      if (config.alwaysScrollDown) {
-        chatlines.scrollTop = chatlines.scrollHeight;
-      } else {
-        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-          chatlines.scrollTop = chatlines.scrollHeight;
-        } else {
-          chatlines.scrollLeft = chatlines.scrollWidth;
-        }
+        ).update();
       }
     }
   }
@@ -1704,56 +2251,155 @@ function injectScript() {
         `Getting top 5 embeds in the last ${config.embedTime} minutes...`,
         "msg-info",
         ""
-      );
+      ).update();
       embedUrl = `https://vyneer.me/tools/embeds?t=${config.embedTime}`;
     } else {
-      new DGGMsg(`Getting last 5 embeds...`, "msg-info", "");
+      new DGGMsg(`Getting last 5 embeds...`, "msg-info", "").update();
       embedUrl = `https://vyneer.me/tools/embeds/last`;
-    }
-
-    if (config.alwaysScrollDown) {
-      chatlines.scrollTop = chatlines.scrollHeight;
-    } else {
-      if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-        chatlines.scrollTop = chatlines.scrollHeight;
-      } else {
-        chatlines.scrollLeft = chatlines.scrollWidth;
-      }
     }
 
     GM.xmlHttpRequest({
       method: "GET",
       url: embedUrl,
       onload: (response) => {
-        let data = JSON.parse(response.response);
-        if (config.lastEmbeds) {
-          data = data.reverse();
+        if (response.status == 200) {
+          // violentmonkey bug workaround
+          let respText = response.response;
+          if (typeof(response.response) !== "string") {
+            respText = encoder.decode(response.response);
+          }
+          let embedData = JSON.parse(respText);
+          if (config.lastEmbeds) {
+            embedData = embedData.reverse();
+          }
+          if (config.showLastVOD) {
+            GM.xmlHttpRequest({
+              method: "GET",
+              url: "https://vyneer.me/tools/ytvods",
+              onload: (response) => {
+                let vodData = [];
+                if (response.status == 200) {
+                  // violentmonkey bug workaround
+                  let respText = response.response;
+                  if (typeof(response.response) !== "string") {
+                    respText = encoder.decode(response.response);
+                  }
+                  vodData = JSON.parse(respText);
+                  if (vodData.length > 0) {
+                    new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
+                  } else {
+                    new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                    console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - the VOD db is empty`);
+                  }
+                } else {
+                  new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                  console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP status code: ${response.status} - ${response.statusText}`);
+                }
+                serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+              },
+              onerror: () => {
+                new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP error`);
+              },
+              ontimeout: () => {
+                new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+              }
+            });
+          } else {
+            serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+          }
+        } else {
+          new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+          console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - URL: ${embedUrl}, HTTP status code: ${response.status} - ${response.statusText}`);
         }
-        serveEmbeds(data, config.lastEmbeds, config.lastIfNone);
       },
+      onerror: () => {
+        new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+        console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP error`);
+      },
+      ontimeout: () => {
+        new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+        console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+      }
     });
   }
 
-  // function to check nukes and mutelinks
-  function getNukesAndLinks() {
+  // function to see get latest timestamps of nukes/phrases/mutelinks
+  function getNukesMutesPhrasesTimestamps() {
     GM.xmlHttpRequest({
       method: "GET",
-      url: "https://vyneer.me/tools/nukes",
+      url: "https://vyneer.me/tools/nmptimestamps",
       onload: (response) => {
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
+        if (response.status == 200) {
+          if (!DEBUG) {
+            // violentmonkey bug workaround
+            let respText = response.response;
+            if (typeof(response.response) !== "string") {
+              respText = encoder.decode(response.response);
+            }
+            data = JSON.parse(respText);
+          }
+          if (nukesTimestamp !== data.nukes) {
+            getNukes();
+          }
+
+          if (mutelinksTimestamp !== data.mutelinks) {
+            getMutelinks();
+          }
+
+          if (phrasesTimestamp !== data.phrases) {
+            getPhrases();
+          }
+        } else {
+          console.error(`[ERROR] [dgg-utils] couldn't get the nukes/mutelinks/phrases timestamps - HTTP status code: ${response.status} - ${response.statusText}`);
+        }
+      }
+    });
+  }
+
+  // function to get nukes
+  function getNukes() {
+    GM.xmlHttpRequest({
+      method: "GET",
+      url: "https://vyneer.me/tools/nukes?ts=1",
+      onload: (response) => {
+        let parsedResponse = {};
         let data = [];
         if (DEBUG) {
           data = DEBUG_NUKE_DATA;
         }
         nukes = [];
+        nukesCompiled = [];
         if (response.status == 200) {
           if (!DEBUG) {
-             data = JSON.parse(response.response);
+            // violentmonkey bug workaround
+            let respText = response.response;
+            if (typeof(response.response) !== "string") {
+              respText = encoder.decode(response.response);
+            }
+            parsedResponse = JSON.parse(respText);
+            if (parsedResponse && parsedResponse.data) {
+              data = parsedResponse.data;
+            }
           }
+          nukesTimestamp = parsedResponse.updatedAt;
           if (data.length > 0) {
             let nukeAlertButtonTooltip = "";
             data.forEach((entry) => {
-              nukeAlertButtonTooltip += `${entry.word} (${entry.type} for ${entry.duration})\n`;
               nukes.push(entry);
+              nukeAlertButtonTooltip += `${entry.word} (${entry.type} for ${entry.duration})\n`;
+              let cleanNuke = entry.word.trim().toLowerCase();
+              if (/^\/.*\/$/.test(cleanNuke) && cleanNuke.length > 2) {
+                const regexString = cleanNuke.slice(1, cleanNuke.length - 1);
+                const regex = new RegExp(regexString, "i");
+                nukesCompiled.push(regex);
+              } else {
+                nukesCompiled.push(entry.word);
+              }
             });
             nukeAlertButton.style.display = "";
             if (nukeAlertButtonTooltip) {
@@ -1771,66 +2417,86 @@ function injectScript() {
             }
           }
         } else {
-          console.log(`dgg-utils error, can't get nukes - ${response.status}`);
+          console.error(`[ERROR] [dgg-utils] couldn't get the nuke data - HTTP status code: ${response.status} - ${response.statusText}`);
         }
       },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the nuke data - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the nuke data - HTTP timeout`);
+      }
     });
+  }
 
+  // function to get nukes and mutelinks
+  function getMutelinks() {
     GM.xmlHttpRequest({
       method: "GET",
-      url: "https://vyneer.me/tools/mutelinks",
+      url: "https://vyneer.me/tools/mutelinks?ts=1",
       onload: (response) => {
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
+        let parsedResponse = {};
         let data = [];
         if (DEBUG) {
           data = DEBUG_LINKS_DATA;
         }
         if (response.status == 200) {
           if (!DEBUG) {
-             data = JSON.parse(response.response);
+            // violentmonkey bug workaround
+            let respText = response.response;
+            if (typeof(response.response) !== "string") {
+              respText = encoder.decode(response.response);
+            }
+            parsedResponse = JSON.parse(respText);
+            if (parsedResponse && parsedResponse.data) {
+              data = parsedResponse.data;
+            }
           }
-          if (data[0].status == "on") {
+          mutelinksTimestamp = parsedResponse.updatedAt;
+          if (data[0] && data[0].status == "on") {
+            mutelinks = true;
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `Links mentioning ${data[0].user} WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "on";
-            if (config.colorOnMutelinks) {
-              document.body.style.setProperty(
-                "--mutelinks-color",
-                `#${mutelinksColorArea.value}`
-              );
-            }
-          } else if (data[0].status == "all") {
+          } else if (data[0] && data[0].status == "all") {
+            mutelinks = true;
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `ANY link WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "all";
-            if (config.colorOnMutelinks) {
-              document.body.style.setProperty(
-                "--mutelinks-color",
-                `#${mutelinksColorArea.value}`
-              );
-            }
-          } else if (data[0].status == "off") {
+          } else if (data[0] && data[0].status == "off") {
+            mutelinks = false;
             if (linksAlertButton.style.display != "none") {
               linksAlertButton.style.display = "none";
               linksAlertButton.title = "Mutelinks";
             }
-            if (config.colorOnMutelinks) {
-              document.body.style.setProperty("--mutelinks-color", `#111`);
-            }
           }
         } else {
-          console.log(
-            `dgg-utils error, can't get mutelinks - ${response.status}`
+          console.error(
+            `[ERROR] [dgg-utils] couldn't get the mutelinks data - HTTP status code: ${response.status} - ${response.statusText}`
           );
         }
       },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the mutelinks data - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the mutelinks data - HTTP timeout`);
+      }
     });
   }
 
-  getNukesAndLinks();
+  getNukes();
+  getMutelinks();
 
   setInterval(() => {
-    getNukesAndLinks();
-    getPhrases();
+    getNukesMutesPhrasesTimestamps();
   }, 15000);
 
   // make an observer move nuke/mutelinks buttons based on amount of whispers
@@ -1845,17 +2511,7 @@ function injectScript() {
   // adding an event listener to the nukes button
   // once you press it it fetches nukes from vyneer.me and displays them in chat
   nukeAlertButton.addEventListener("click", () => {
-    new DGGMsg(`Showing current nukes...`, "msg-info", "");
-
-    if (config.alwaysScrollDown) {
-      chatlines.scrollTop = chatlines.scrollHeight;
-    } else {
-      if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-        chatlines.scrollTop = chatlines.scrollHeight;
-      } else {
-        chatlines.scrollLeft = chatlines.scrollWidth;
-      }
-    }
+    new DGGMsg(`Showing current nukes...`, "msg-info", "").update();
 
     if (nukes.length > 0) {
       nukes.forEach((result) => {
@@ -1865,32 +2521,14 @@ function injectScript() {
           })`,
           "msg-status msg-historical",
           ""
-        );
-        if (config.alwaysScrollDown) {
-          chatlines.scrollTop = chatlines.scrollHeight;
-        } else {
-          if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-            chatlines.scrollTop = chatlines.scrollHeight;
-          } else {
-            chatlines.scrollLeft = chatlines.scrollWidth;
-          }
-        }
+        ).update();
       });
     } else {
       new DGGMsg(
         `Looks like there's no data regarding the nukes.`,
-        "msg-status msg-error",
+        "msg-error",
         ""
-      );
-      if (config.alwaysScrollDown) {
-        chatlines.scrollTop = chatlines.scrollHeight;
-      } else {
-        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
-          chatlines.scrollTop = chatlines.scrollHeight;
-        } else {
-          chatlines.scrollLeft = chatlines.scrollWidth;
-        }
-      }
+      ).update();
     }
   });
 }
