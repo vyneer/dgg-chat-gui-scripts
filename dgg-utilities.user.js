@@ -228,7 +228,7 @@ function injectScript() {
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
   let livePill = undefined;
-  
+
   try {
     livePill = !window.parent.location.href.includes("embed")
     ? window.parent.document.querySelector("#host-pill-type")
@@ -710,12 +710,52 @@ function injectScript() {
     }
   };
 
+  let replaceYoutubePillName = () => {
+    let embedMatch = window.parent.location.hash.match(/^#youtube\/(.*)$/);
+    if (embedMatch) {
+      let embedId = embedMatch[1];
+      GM.xmlHttpRequest({
+        method: 'GET',
+        url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${embedId}`,
+        onload: (response) => {
+          if (errorAlert.style.display == "") {
+            errorAlert.style.display = "none";
+          }
+          if (response.status == 200) {
+            // violentmonkey bug workaround
+            let respText = response.response;
+            if (typeof(response.response) !== "string") {
+              respText = encoder.decode(response.response);
+            }
+            let data = JSON.parse(respText);
+            if ('author_name' in data) {
+              let channel = data['author_name'];
+
+              livePill.nextElementSibling.innerText = channel
+            }
+          } else {
+            console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
+          }
+        },
+        onerror: () => {
+          errorAlert.style.display = "";
+          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
+        },
+        ontimeout: () => {
+          errorAlert.style.display = "";
+          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
+        }
+      });
+    }
+  };
+
   // make an observer that checks for steve going live
   let liveObserver = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
       for (let node of mutation.addedNodes) {
         if (livePill != undefined) {
           checkLive(node);
+          replaceYoutubePillName();
         }
       }
     }
