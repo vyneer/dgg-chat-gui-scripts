@@ -143,6 +143,7 @@ const configItems = {
   customColor       : new ConfigItem("customColor",        "1f0000"),
   customSoftColor   : new ConfigItem("customSoftColor",    "260019"),
   editEmbeds        : new ConfigItem("editEmbeds",         false   ),
+  editEmbedPill     : new ConfigItem("editEmbedPill",      false   ),
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
   stickyMentions    : new ConfigItem("stickyMentions",     false   ),
@@ -228,7 +229,6 @@ function injectScript() {
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
   let livePill = undefined;
-
   try {
     livePill = !window.parent.location.href.includes("embed")
     ? window.parent.document.querySelector("#host-pill-type")
@@ -710,28 +710,12 @@ function injectScript() {
     }
   };
 
-  let replaceYoutubePillName = () => {
-    let embedMatch = window.parent.location.hash.match(/^#youtube\/(.*)$/);
-    if (embedMatch) {
-      let embedId = embedMatch[1];
-      getYoutubeStreamMetadata(embedId, (metadata) => {
-        if ('author_name' in metadata) {
-          let channel = metadata['author_name'];
-
-          livePill.nextElementSibling.innerText = channel
-        }
-      });
-    }
-  };
-
   // make an observer that checks for steve going live
-  replaceYoutubePillName();
   let liveObserver = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
       for (let node of mutation.addedNodes) {
         if (livePill != undefined) {
           checkLive(node);
-          replaceYoutubePillName();
         }
       }
     }
@@ -1227,7 +1211,7 @@ function injectScript() {
                         }
                       }
                     });
-                  break;
+                    break;
                 }
               });
           }
@@ -1265,6 +1249,60 @@ function injectScript() {
     embedObserver.disconnect();
   }
   editEmbedsLabel.prepend(editEmbedsCheck);
+
+  // make an observer that checks for live pill changing from embeds
+  let replaceYoutubePillName = () => {
+    let embedMatch = window.parent.location.hash.match(/^#youtube\/(.*)$/);
+    if (embedMatch) {
+      let embedId = embedMatch[1];
+      getYoutubeStreamMetadata(embedId, (metadata) => {
+        if ('author_name' in metadata) {
+          let channel = metadata['author_name'];
+
+          livePill.nextElementSibling.innerText = channel
+        }
+      });
+    }
+  };
+
+  let pillObserver = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      for (let node of mutation.addedNodes) {
+        if (livePill != undefined) {
+          replaceYoutubePillName();
+        }
+      }
+    }
+  });
+
+  let editEmbedPillGroup = document.createElement("div");
+  editEmbedPillGroup.className = "form-group checkbox";
+  let editEmbedPillLabel = document.createElement("label");
+  editEmbedPillLabel.innerHTML = "Replace a YouTube embed's stream ID with the channel name in the live pill";
+  editEmbedPillGroup.appendChild(editEmbedPillLabel);
+  let editEmbedPillCheck = document.createElement("input");
+  editEmbedPillCheck.name = "editEmbedPill";
+  editEmbedPillCheck.type = "checkbox";
+  editEmbedPillCheck.checked = config.editEmbedPill;
+  editEmbedPillCheck.addEventListener("change", () => {
+    config.editEmbedPill = editEmbedPillCheck.checked;
+    if (config.editEmbedPill) {
+      pillObserver.observe(livePill, {
+        childList: true
+      });
+    } else {
+      pillObserver.disconnect();
+    }
+  });
+  if (config.editEmbedPill) {
+    replaceYoutubePillName();
+    pillObserver.observe(livePill, {
+      childList: true
+    });
+  } else {
+    pillObserver.disconnect();
+  }
+  editEmbedPillLabel.prepend(editEmbedPillCheck);
 
   // creating a setting to prevent enter from working if you have a banned phrase in the message
   let preventEnterGroup = document.createElement("div");
@@ -1579,6 +1617,7 @@ function injectScript() {
   settingsArea.appendChild(ignoredPhrasesGroup);
   settingsArea.appendChild(preventEnterGroup);
   settingsArea.appendChild(editEmbedsGroup);
+  settingsArea.appendChild(editEmbedPillGroup);
 
   // https://www.npmjs.com/package/text-ellipsis
   // cut off a string if too long
