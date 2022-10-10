@@ -2514,13 +2514,7 @@ function injectScript() {
           errorAlert.style.display = "none";
         }
         if (response.status == 200) {
-          // violentmonkey bug workaround
-          let respText = response.response;
-          if (typeof(response.response) !== "string") {
-            respText = encoder.decode(response.response);
-          }
-          let data = JSON.parse(respText);
-
+          let data = JSON.parse(response.response);
           callback(data);
         } else {
           console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
