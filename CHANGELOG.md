@@ -7,6 +7,7 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 
 ## [Unreleased]
 
+- Add an option to update the live pill for Youtube stream with channel name (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
 - ...
 
 ## [1.7.1] - 2022-10-10
