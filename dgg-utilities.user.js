@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         [dev] d.gg utilities
+// @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.10.10
-// @description  [dev] small, but useful tools for both regular dggers and newbies alike
+// @version      1.7.1
+// @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -17,7 +17,9 @@
 // ==/UserScript==
 
 // ==Changelog==
-// v1.7
+// v1.7.1 - 2022-10-10
+// * remove the violentmonkey workaround
+// v1.7 - 2022-10-07
 // * move all the settings into a custom menu
 // * speedup banned phrase detection
 // * better mutelinks mode support (now detects SOME links in your messages!)
@@ -45,12 +47,6 @@
 // * add all strims links
 // v1.5.1 - 2021-11-20
 // * fix (source) links not working in some cases
-// v1.5 - 2021-11-19
-// * add an option to disable autoscroll down (so, when the "More messages below" bar appears, it won't scroll down if you uncheck the setting)
-// * add an option to see title/channel name of youtube embeds
-// * add an option to see title of twitch embeds
-// * now shows the nuked phrases when you hover over the nuke button
-// * set saturation of embed icon to 0 (because win 11 made the emoji purple MMMM)
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
@@ -342,7 +338,7 @@ function injectScript() {
             // if the API shows there's an update, show a message
             GM.xmlHttpRequest({
               method: "GET",
-              url: "https://vyneer.me/tools/script/dev",
+              url: "https://vyneer.me/tools/script",
               onload: (response) => {
                 if (response.status == 200) {
                   let data = JSON.parse(response.response);
