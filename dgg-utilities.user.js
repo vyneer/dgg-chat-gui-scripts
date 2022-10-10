@@ -139,6 +139,7 @@ const configItems = {
   customColor       : new ConfigItem("customColor",        "1f0000"),
   customSoftColor   : new ConfigItem("customSoftColor",    "260019"),
   editEmbeds        : new ConfigItem("editEmbeds",         false   ),
+  editEmbedPill     : new ConfigItem("editEmbedPill",      false   ),
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
   stickyMentions    : new ConfigItem("stickyMentions",     false   ),
@@ -224,7 +225,6 @@ function injectScript() {
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
   let livePill = undefined;
-  
   try {
     livePill = !window.parent.location.href.includes("embed")
     ? window.parent.document.querySelector("#host-pill-type")
@@ -1182,44 +1182,24 @@ function injectScript() {
 
                 switch (platform) {
                   case "#youtube":
-                    GM.xmlHttpRequest({
-                      method: "GET",
-                      url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${id}`,
-                      onload: (response) => {
-                        if (errorAlert.style.display == "") {
-                          errorAlert.style.display = "none";
+                    getYoutubeStreamMetadata(id, (metadata) => {
+                      if ("title" in metadata && "author_name" in metadata) {
+                        let title = metadata["title"];
+                        let channel = metadata["author_name"];
+                        switch (config.youtubeEmbedFormat) {
+                          case 2:
+                            embedNode.text = `${platform}/${id} (${channel})`;
+                            break;
+                          case 3:
+                            embedNode.text = `${platform}/${id} (${title})`;
+                            break;
+                          case 4:
+                            embedNode.text = `${platform}/${channel}`;
+                            break;
+                          case 5:
+                            embedNode.text = `${platform}/${title}`;
+                            break;
                         }
-                        if (response.status == 200) {
-                          let data = JSON.parse(response.response);
-                          if ("title" in data && "author_name" in data) {
-                            let title = data["title"];
-                            let channel = data["author_name"];
-                            switch (config.youtubeEmbedFormat) {
-                              case 2:
-                                embedNode.text = `${platform}/${id} (${channel})`;
-                                break;
-                              case 3:
-                                embedNode.text = `${platform}/${id} (${title})`;
-                                break;
-                              case 4:
-                                embedNode.text = `${platform}/${channel}`;
-                                break;
-                              case 5:
-                                embedNode.text = `${platform}/${title}`;
-                                break;
-                            }
-                          }
-                        } else {
-                          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
-                        }
-                      },
-                      onerror: () => {
-                        errorAlert.style.display = "";
-                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
-                      },
-                      ontimeout: () => {
-                        errorAlert.style.display = "";
-                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
                       }
                     });
                     break;
@@ -1260,6 +1240,60 @@ function injectScript() {
     embedObserver.disconnect();
   }
   editEmbedsLabel.prepend(editEmbedsCheck);
+
+  // make an observer that checks for live pill changing from embeds
+  let replaceYoutubePillName = () => {
+    let embedMatch = window.parent.location.hash.match(/^#youtube\/(.*)$/);
+    if (embedMatch) {
+      let embedId = embedMatch[1];
+      getYoutubeStreamMetadata(embedId, (metadata) => {
+        if ('author_name' in metadata) {
+          let channel = metadata['author_name'];
+
+          livePill.nextElementSibling.innerText = channel
+        }
+      });
+    }
+  };
+
+  let pillObserver = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      for (let node of mutation.addedNodes) {
+        if (livePill != undefined) {
+          replaceYoutubePillName();
+        }
+      }
+    }
+  });
+
+  let editEmbedPillGroup = document.createElement("div");
+  editEmbedPillGroup.className = "form-group checkbox";
+  let editEmbedPillLabel = document.createElement("label");
+  editEmbedPillLabel.innerHTML = "Replace a YouTube embed's stream ID with the channel name in the live pill";
+  editEmbedPillGroup.appendChild(editEmbedPillLabel);
+  let editEmbedPillCheck = document.createElement("input");
+  editEmbedPillCheck.name = "editEmbedPill";
+  editEmbedPillCheck.type = "checkbox";
+  editEmbedPillCheck.checked = config.editEmbedPill;
+  editEmbedPillCheck.addEventListener("change", () => {
+    config.editEmbedPill = editEmbedPillCheck.checked;
+    if (config.editEmbedPill) {
+      pillObserver.observe(livePill, {
+        childList: true
+      });
+    } else {
+      pillObserver.disconnect();
+    }
+  });
+  if (config.editEmbedPill) {
+    replaceYoutubePillName();
+    pillObserver.observe(livePill, {
+      childList: true
+    });
+  } else {
+    pillObserver.disconnect();
+  }
+  editEmbedPillLabel.prepend(editEmbedPillCheck);
 
   // creating a setting to prevent enter from working if you have a banned phrase in the message
   let preventEnterGroup = document.createElement("div");
@@ -1574,6 +1608,7 @@ function injectScript() {
   settingsArea.appendChild(ignoredPhrasesGroup);
   settingsArea.appendChild(preventEnterGroup);
   settingsArea.appendChild(editEmbedsGroup);
+  settingsArea.appendChild(editEmbedPillGroup);
 
   // https://www.npmjs.com/package/text-ellipsis
   // cut off a string if too long
@@ -2467,4 +2502,32 @@ function injectScript() {
       ).update();
     }
   });
+
+  // helper function to query youtube with a stream id to get metadata about that stream, including the stream's title and the channel's name
+  // the metadata is passed into the given callback function
+  function getYoutubeStreamMetadata(youTubeStreamId, callback) {
+    GM.xmlHttpRequest({
+      method: 'GET',
+      url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${youTubeStreamId}`,
+      onload: (response) => {
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
+        if (response.status == 200) {
+          let data = JSON.parse(response.response);
+          callback(data);
+        } else {
+          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
+        }
+      },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
+      }
+    });
+  }
 }
