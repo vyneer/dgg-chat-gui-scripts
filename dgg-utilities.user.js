@@ -1,11 +1,10 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.10.07
+// @version      dev-2022.09.14
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
-// @match        *://*.destiny.gg/bigscreen*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
 // @run-at       document-start
 // @allFrames    true
@@ -52,9 +51,6 @@
 // * add an option to see title of twitch embeds
 // * now shows the nuked phrases when you hover over the nuke button
 // * set saturation of embed icon to 0 (because win 11 made the emoji purple MMMM)
-
-// temporary workaround until new violentmonkey version
-const encoder = new TextDecoder("utf-8");
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
@@ -349,12 +345,7 @@ function injectScript() {
               url: "https://vyneer.me/tools/script/dev",
               onload: (response) => {
                 if (response.status == 200) {
-                  // violentmonkey bug workaround
-                  let respText = response.response;
-                  if (typeof(response.response) !== "string") {
-                    respText = encoder.decode(response.response);
-                  }
-                  let data = JSON.parse(respText);
+                  let data = JSON.parse(response.response);
                   if ("link" in data && "version" in data) {
                     if (GM_info.script.version < data.version) {
                       new DGGMsg(
@@ -1199,12 +1190,7 @@ function injectScript() {
                           errorAlert.style.display = "none";
                         }
                         if (response.status == 200) {
-                          // violentmonkey bug workaround
-                          let respText = response.response;
-                          if (typeof(response.response) !== "string") {
-                            respText = encoder.decode(response.response);
-                          }
-                          let data = JSON.parse(respText);
+                          let data = JSON.parse(response.response);
                           if ("title" in data && "author_name" in data) {
                             let title = data["title"];
                             let channel = data["author_name"];
@@ -1852,12 +1838,7 @@ function injectScript() {
           errorAlert.style.display = "none";
         }
         if (response.status == 200) {
-          // violentmonkey bug workaround
-          let respText = response.response;
-          if (typeof(response.response) !== "string") {
-            respText = encoder.decode(response.response);
-          }
-          let parsedResponse = JSON.parse(respText);
+          let parsedResponse = JSON.parse(response.response);
           let data = [];
           if (parsedResponse && parsedResponse.data) {
             data = parsedResponse.data;
@@ -1884,12 +1865,7 @@ function injectScript() {
             },
             onload: (response) => {
               if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
-                // violentmonkey bug workaround
-                let respText = response.response;
-                if (typeof(response.response) !== "string") {
-                  respText = encoder.decode(response.response);
-                }
-                let data = JSON.parse(respText);
+                let data = JSON.parse(response.response);
                 response.responseHeaders.split(/\r?\n/).forEach(el => {
                   const splitHeader = el.split(": ");
                   if (splitHeader[0] == "etag") {
@@ -1931,12 +1907,7 @@ function injectScript() {
           },
           onload: (response) => {
             if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
-              // violentmonkey bug workaround
-              let respText = response.response;
-              if (typeof(response.response) !== "string") {
-                respText = encoder.decode(response.response);
-              }
-              let data = JSON.parse(respText);
+              let data = JSON.parse(response.response);
               response.responseHeaders.split(/\r?\n/).forEach(el => {
                 const splitHeader = el.split(": ");
                 if (splitHeader[0] == "etag") {
@@ -1977,12 +1948,7 @@ function injectScript() {
           },
           onload: (response) => {
             if ((response.status == 304 && phrases.length == 0) || response.status == 200) {
-              // violentmonkey bug workaround
-              let respText = response.response;
-              if (typeof(response.response) !== "string") {
-                respText = encoder.decode(response.response);
-              }
-              let data = JSON.parse(respText);
+              let data = JSON.parse(response.response);
               response.responseHeaders.split(/\r?\n/).forEach(el => {
                 const splitHeader = el.split(": ");
                 if (splitHeader[0] == "etag") {
@@ -2201,12 +2167,7 @@ function injectScript() {
                 errorAlert.style.display = "none";
               }
               if (response.status == 200) {
-                // violentmonkey bug workaround
-                let respText = response.response;
-                if (typeof(response.response) !== "string") {
-                  respText = encoder.decode(response.response);
-                }
-                let data = JSON.parse(respText);
+                let data = JSON.parse(response.response);
                 if (config.lastEmbeds) {
                   data = data.reverse();
                 }
@@ -2263,12 +2224,7 @@ function injectScript() {
       url: embedUrl,
       onload: (response) => {
         if (response.status == 200) {
-          // violentmonkey bug workaround
-          let respText = response.response;
-          if (typeof(response.response) !== "string") {
-            respText = encoder.decode(response.response);
-          }
-          let embedData = JSON.parse(respText);
+          let embedData = JSON.parse(response.response);
           if (config.lastEmbeds) {
             embedData = embedData.reverse();
           }
@@ -2279,12 +2235,7 @@ function injectScript() {
               onload: (response) => {
                 let vodData = [];
                 if (response.status == 200) {
-                  // violentmonkey bug workaround
-                  let respText = response.response;
-                  if (typeof(response.response) !== "string") {
-                    respText = encoder.decode(response.response);
-                  }
-                  vodData = JSON.parse(respText);
+                  vodData = JSON.parse(response.response);
                   if (vodData.length > 0) {
                     new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
                   } else {
@@ -2336,12 +2287,7 @@ function injectScript() {
         }
         if (response.status == 200) {
           if (!DEBUG) {
-            // violentmonkey bug workaround
-            let respText = response.response;
-            if (typeof(response.response) !== "string") {
-              respText = encoder.decode(response.response);
-            }
-            data = JSON.parse(respText);
+             data = JSON.parse(response.response);
           }
           if (nukesTimestamp !== data.nukes) {
             getNukes();
@@ -2376,12 +2322,7 @@ function injectScript() {
         nukesCompiled = [];
         if (response.status == 200) {
           if (!DEBUG) {
-            // violentmonkey bug workaround
-            let respText = response.response;
-            if (typeof(response.response) !== "string") {
-              respText = encoder.decode(response.response);
-            }
-            parsedResponse = JSON.parse(respText);
+            parsedResponse = JSON.parse(response.response);
             if (parsedResponse && parsedResponse.data) {
               data = parsedResponse.data;
             }
@@ -2447,12 +2388,7 @@ function injectScript() {
         }
         if (response.status == 200) {
           if (!DEBUG) {
-            // violentmonkey bug workaround
-            let respText = response.response;
-            if (typeof(response.response) !== "string") {
-              respText = encoder.decode(response.response);
-            }
-            parsedResponse = JSON.parse(respText);
+            parsedResponse = JSON.parse(response.response);
             if (parsedResponse && parsedResponse.data) {
               data = parsedResponse.data;
             }
