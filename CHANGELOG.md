@@ -9,6 +9,12 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 
 - ...
 
+## [1.7.1] - 2022-10-10
+
+### Fixed
+
+- Remove the temporary Violentmonkey Chromium workaround
+
 ## [1.7] - 2022-10-07
 
 ### Added
