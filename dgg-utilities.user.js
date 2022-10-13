@@ -123,6 +123,7 @@ const configItems = {
   changeTitleOnLive : new ConfigItem("changeTitleOnLive",  false   ),
   embedIconStyle    : new ConfigItem("embedIconStyle",     1       ),
   doubleClickCopy   : new ConfigItem("doubleClickCopy",    false   ),
+  embedChat         : new ConfigItem("embedChat",          false   ),
   embedsOnLaunch    : new ConfigItem("embedsOnLaunch",     false   ),
   showLastVOD       : new ConfigItem("showLastVOD",        false   ),
   lastEmbeds        : new ConfigItem("lastEmbeds",         false   ),
@@ -682,6 +683,160 @@ function injectScript() {
     window.addEventListener("dblclick", doubleClickCopyListener);
   }
   doubleClickCopyLabel.prepend(doubleClickCopyCheck);
+
+  // functions to manage switching between DGG chat and the embedded chat
+  const dggChatToggleLabel = "DGG Chat";
+  const embedChatToggleLabel = "Embed Chat";
+  const ytChatToggleLabel = "Youtube Chat";
+  let dggChatIFrame;
+  if (livePill) {
+    dggChatIFrame = window.parent.document.getElementById("chat-wrap").getElementsByTagName("iframe")[0];
+  }
+  let embedChatIFrame;
+  let embedChatToggle;
+  let embedChatActive = false;
+
+  const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
+  const TWITCH_EMBED_RE = /^#twitch\/(.*)$/
+
+  function isLive() {
+    const streamInfo = JSON.parse(localStorage.getItem("dggApi:streamInfo"));
+    return streamInfo.streams.youtube.live || false;
+  }
+
+  function getYTStreamId() {
+    const streamInfo = JSON.parse(localStorage.getItem("dggApi:streamInfo"));
+    return streamInfo.streams.youtube.id;
+  }
+
+  function getYTLiveChatURL() {
+    if (isLive()) {
+      return `https://www.youtube.com/live_chat?v=${getYTStreamId()}&embed_domain=www.destiny.gg`;
+    }
+
+    return null;
+  }
+
+  function getYTEmbedChatURL() {
+    const match = YOUTUBE_EMBED_RE.exec(window.parent.location.hash);
+    return match ?
+      `https://www.youtube.com/live_chat?v=${match[1]}&embed_domain=www.destiny.gg` :
+      null;
+  }
+
+  function getTwitchEmbedChatURL() {
+    const match = TWITCH_EMBED_RE.exec(window.parent.location.hash);
+    return match ?
+      `https://www.twitch.tv/embed/${match[1]}/chat?parent=www.destiny.gg&darkpopout` :
+      null;
+  }
+
+  function activateEmbedChat(embedChatURL) {
+    embedChatActive = true;
+
+    // only update the src attribute if it has changed to avoid unnecessary refresh
+    if (embedChatIFrame.getAttribute("src") !== embedChatURL) {
+      embedChatIFrame.setAttribute("src", embedChatURL);
+    }
+
+    dggChatIFrame.style.display = "none";
+    embedChatIFrame.style.display = "block";
+
+    embedChatToggle.innerHTML = dggChatToggleLabel;
+  }
+
+  function deactivateEmbedChat() {
+    embedChatActive = false;
+
+    embedChatIFrame.style.display = "none";
+    dggChatIFrame.style.display = "block";
+
+    embedChatToggle.innerHTML = isLive() ? ytChatToggleLabel : embedChatToggleLabel;
+  }
+
+  function toggleEmbedChat() {
+    if (embedChatActive) {
+      deactivateEmbedChat();
+      return;
+    }
+
+    const ytEmbedChatURL = getYTEmbedChatURL();
+    if (ytEmbedChatURL) {
+      activateEmbedChat(ytEmbedChatURL);
+      return;
+    }
+
+    const twitchEmbedChatURL = getTwitchEmbedChatURL();
+    if (twitchEmbedChatURL) {
+      activateEmbedChat(twitchEmbedChatURL);
+      return;
+    }
+
+    const ytLiveChatURL = getYTLiveChatURL();
+    if (ytLiveChatURL) {
+      activateEmbedChat(ytLiveChatURL);
+      return;
+    }
+  }
+
+  function addEmbedChatToggleBtn() {
+    if (!livePill) {
+      return;
+    }
+
+    if (window.parent.document.getElementById("embed-chat-iframe")) {
+      removeEmbedChatToggleBtn();
+    }
+
+    // add the iframe for the embedded chat
+    embedChatIFrame = document.createElement("iframe");
+    embedChatIFrame.id = "embed-chat-iframe"
+    embedChatIFrame.style.display = "none";
+    embedChatIFrame.setAttribute("seamless", "seamless");
+    dggChatIFrame.parentNode.appendChild(embedChatIFrame);
+
+    // add the link/button for toggling the embedded chat
+    embedChatToggle = document.createElement("a");
+    embedChatToggle.id = "embed-chat-toggle";
+    embedChatToggle.className = "float-left";
+    embedChatToggle.style.width = "100px";
+    embedChatToggle.innerHTML = isLive() ? ytChatToggleLabel : embedChatToggleLabel;
+
+    embedChatToggle.addEventListener("click", toggleEmbedChat);
+
+    window.parent.document.getElementById("chat-panel-tools").insertBefore(
+      embedChatToggle,
+      window.parent.document.getElementById("refresh").nextSibling
+    );
+  }
+  function removeEmbedChatToggleBtn() {
+    dggChatIFrame.style.display = "block";
+    window.parent.document.getElementById("embed-chat-toggle").remove();
+    window.parent.document.getElementById("embed-chat-iframe").remove();
+  }
+
+  // create a setting to enable the link to switch the embed chat
+  let embedChatGroup = document.createElement("div");
+  embedChatGroup.className = "form-group checkbox";
+  let embedChatLabel = document.createElement("label");
+  embedChatLabel.innerHTML = "Add button to switch betweeen DGG chat & the currently embedded video's chat";
+  embedChatGroup.appendChild(embedChatLabel);
+  let embedChatCheck = document.createElement("input");
+  embedChatCheck.name = "doubleClickCopy";
+  embedChatCheck.type = "checkbox";
+  embedChatCheck.checked = config.embedChat;
+  embedChatCheck.addEventListener("change", () => {
+    config.embedChat = embedChatCheck.checked;
+    if (config.embedChat) {
+      addEmbedChatToggleBtn();
+    } else {
+      removeEmbedChatToggleBtn();
+    }
+  });
+  if (config.embedChat) {
+    addEmbedChatToggleBtn();
+  }
+  embedChatLabel.prepend(embedChatCheck);
 
   let ogtitle = undefined;
   try {
@@ -1576,6 +1731,7 @@ function injectScript() {
   // appending all the settings to our area
   settingsArea.appendChild(alwaysScrollDownGroup);
   settingsArea.appendChild(doubleClickCopyGroup);
+  settingsArea.appendChild(embedChatGroup);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
   settingsArea.appendChild(changeTitleOnLiveGroup);
