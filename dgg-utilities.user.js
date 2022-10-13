@@ -1266,6 +1266,11 @@ function injectScript() {
     }
   });
 
+  // modify the styling of the pill to accommadate any longer youtube channels with spaces in the names
+  if (livePill != undefined) {
+    window.parent.document.getElementById("host-pill-name").style.whiteSpace = 'nowrap';
+  }
+
   let editEmbedPillGroup = document.createElement("div");
   editEmbedPillGroup.className = "form-group checkbox";
   let editEmbedPillLabel = document.createElement("label");
