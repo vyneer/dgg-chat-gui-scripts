@@ -4,10 +4,6 @@
 
 small, but useful tools for both regular dggers and newbies alike DANKMEMES
 
-## jigex coom extractor
-
-little script that allows you to get the source image of jigex puzzles
-
 ## bonus thanks to these people
 
 - Voiture for helping with the enter-stopping thingy
