@@ -808,11 +808,18 @@ function injectScript() {
       embedChatToggle,
       window.parent.document.getElementById("refresh").nextSibling
     );
+
+    // The height styling of the DGG chat's input element will be messed up if the DGG chat isn't visible on when the chat's iframe is refreshed
+    // https://github.com/destinygg/chat-gui/blob/78910027663171870a314cc3ab3c066334b72326/assets/chat/js/chat.js#L889
+    // So, show the DGG chat before refreshing the iframe
+    window.parent.document.getElementById("refresh").addEventListener("click", deactivateEmbedChat);
   }
   function removeEmbedChatToggleBtn() {
     dggChatIFrame.style.display = "block";
     window.parent.document.getElementById("embed-chat-toggle").remove();
     window.parent.document.getElementById("embed-chat-iframe").remove();
+
+    window.parent.document.getElementById("refresh").removeEventListener("click", deactivateEmbedChat);
   }
 
   // create a setting to enable the link to switch the embed chat
