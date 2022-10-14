@@ -1282,7 +1282,7 @@ function injectScript() {
   editEmbedPillCheck.checked = config.editEmbedPill;
   editEmbedPillCheck.addEventListener("change", () => {
     config.editEmbedPill = editEmbedPillCheck.checked;
-    if (config.editEmbedPill) {
+    if (config.editEmbedPill && livePill != undefined) {
       pillObserver.observe(livePill, {
         childList: true
       });
@@ -1290,7 +1290,7 @@ function injectScript() {
       pillObserver.disconnect();
     }
   });
-  if (config.editEmbedPill) {
+  if (config.editEmbedPill && livePill != undefined) {
     replaceYoutubePillName();
     pillObserver.observe(livePill, {
       childList: true
