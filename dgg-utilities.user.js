@@ -689,7 +689,7 @@ function injectScript() {
   const embedChatToggleLabel = "Embed Chat";
   const ytChatToggleLabel = "Youtube Chat";
   let dggChatIFrame;
-  if (livePill) {
+  if (livePill != undefined) {
     dggChatIFrame = window.parent.document.getElementById("chat-wrap").getElementsByTagName("iframe")[0];
   }
   let embedChatIFrame;
@@ -780,7 +780,7 @@ function injectScript() {
   }
 
   function addEmbedChatToggleBtn() {
-    if (!livePill) {
+    if (livePill == undefined) {
       return;
     }
 
@@ -809,12 +809,17 @@ function injectScript() {
       window.parent.document.getElementById("refresh").nextSibling
     );
 
-    // The height styling of the DGG chat's input element will be messed up if the DGG chat isn't visible on when the chat's iframe is refreshed
+    // The height styling of the DGG chat's input element will be messed up if the DGG chat isn't visible when the chat's iframe is refreshed
     // https://github.com/destinygg/chat-gui/blob/78910027663171870a314cc3ab3c066334b72326/assets/chat/js/chat.js#L889
     // So, show the DGG chat before refreshing the iframe
     window.parent.document.getElementById("refresh").addEventListener("click", deactivateEmbedChat);
   }
+
   function removeEmbedChatToggleBtn() {
+    if (livePill == undefined) {
+      return;
+    }
+
     dggChatIFrame.style.display = "block";
     window.parent.document.getElementById("embed-chat-toggle").remove();
     window.parent.document.getElementById("embed-chat-iframe").remove();
@@ -826,7 +831,7 @@ function injectScript() {
   let embedChatGroup = document.createElement("div");
   embedChatGroup.className = "form-group checkbox";
   let embedChatLabel = document.createElement("label");
-  embedChatLabel.innerHTML = "Add button to switch betweeen DGG chat & the currently embedded video's chat";
+  embedChatLabel.innerHTML = "Add button to toggle to the currently embedded video's chat";
   embedChatGroup.appendChild(embedChatLabel);
   let embedChatCheck = document.createElement("input");
   embedChatCheck.name = "doubleClickCopy";
