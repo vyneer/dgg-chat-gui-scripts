@@ -17,6 +17,9 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.7.2 - 2022-12-31
+// * add an option to update the live pill for Youtube stream with channel name (big thanks to @mattroseman <3)
+// * add Rumble embeds
 // v1.7.1 - 2022-10-10
 // * remove the violentmonkey workaround
 // v1.7 - 2022-10-07
@@ -45,8 +48,6 @@
 // * add an option to double click a username to append it to the input box (big thanks to @mattroseman <3)
 // v1.5.2 - 2022-04-20
 // * add all strims links
-// v1.5.1 - 2021-11-20
-// * fix (source) links not working in some cases
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
