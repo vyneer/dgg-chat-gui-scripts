@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2022.10.10
+// @version      dev-2022.12.31
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -1808,7 +1808,7 @@ function injectScript() {
     constructor() {
       this.bigscreenPath = "/bigscreen";
       this.bigscreenregex = new RegExp(
-        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
+        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|#rumble|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
         "g"
       );
 
@@ -1979,6 +1979,17 @@ function injectScript() {
                 '" target ="_blank">(source)</a>';
               break;
           }
+          break;
+        case "#rumble":
+          source = "https://rumble.com/embed/" + str.split("/")[1];
+          replacerString =
+            '$1<a class="externallink bookmarklink" href="' +
+            this.url +
+            '$2" target="' +
+            target +
+            '">$2</a> <a class="externallink bookmarklink" href="' +
+            source +
+            '" target ="_blank">(source)</a>';
           break;
         case "strims.gg":
         case "strims.gg/angelthump":
