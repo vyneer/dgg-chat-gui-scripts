@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.7.1
+// @version      1.7.2
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -119,6 +119,7 @@ const configItems = {
   changeTitleOnLive : new ConfigItem("changeTitleOnLive",  false   ),
   embedIconStyle    : new ConfigItem("embedIconStyle",     1       ),
   doubleClickCopy   : new ConfigItem("doubleClickCopy",    false   ),
+  embedChat         : new ConfigItem("embedChat",          false   ),
   embedsOnLaunch    : new ConfigItem("embedsOnLaunch",     false   ),
   showLastVOD       : new ConfigItem("showLastVOD",        false   ),
   lastEmbeds        : new ConfigItem("lastEmbeds",         false   ),
@@ -135,6 +136,7 @@ const configItems = {
   customColor       : new ConfigItem("customColor",        "1f0000"),
   customSoftColor   : new ConfigItem("customSoftColor",    "260019"),
   editEmbeds        : new ConfigItem("editEmbeds",         false   ),
+  editEmbedPill     : new ConfigItem("editEmbedPill",      false   ),
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
   stickyMentions    : new ConfigItem("stickyMentions",     false   ),
@@ -220,7 +222,6 @@ function injectScript() {
   let textarea = document.querySelector("#chat-input-control");
   let scrollnotify = document.querySelector(".chat-scroll-notify");
   let livePill = undefined;
-  
   try {
     livePill = !window.parent.location.href.includes("embed")
     ? window.parent.document.querySelector("#host-pill-type")
@@ -678,6 +679,172 @@ function injectScript() {
     window.addEventListener("dblclick", doubleClickCopyListener);
   }
   doubleClickCopyLabel.prepend(doubleClickCopyCheck);
+
+  // functions to manage switching between DGG chat and the embedded chat
+  const dggChatToggleLabel = "DGG Chat";
+  const embedChatToggleLabel = "Embed Chat";
+  const ytChatToggleLabel = "Youtube Chat";
+  let dggChatIFrame;
+  if (livePill != undefined) {
+    dggChatIFrame = window.parent.document.getElementById("chat-wrap").getElementsByTagName("iframe")[0];
+  }
+  let embedChatIFrame;
+  let embedChatToggle;
+  let embedChatActive = false;
+
+  const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
+  const TWITCH_EMBED_RE = /^#twitch\/(.*)$/
+
+  function isLive() {
+    const streamInfo = JSON.parse(localStorage.getItem("dggApi:streamInfo"));
+    return streamInfo.streams.youtube.live || false;
+  }
+
+  function getYTStreamId() {
+    const streamInfo = JSON.parse(localStorage.getItem("dggApi:streamInfo"));
+    return streamInfo.streams.youtube.id;
+  }
+
+  function getYTLiveChatURL() {
+    if (isLive()) {
+      return `https://www.youtube.com/live_chat?v=${getYTStreamId()}&embed_domain=www.destiny.gg`;
+    }
+
+    return null;
+  }
+
+  function getYTEmbedChatURL() {
+    const match = YOUTUBE_EMBED_RE.exec(window.parent.location.hash);
+    return match ?
+      `https://www.youtube.com/live_chat?v=${match[1]}&embed_domain=www.destiny.gg` :
+      null;
+  }
+
+  function getTwitchEmbedChatURL() {
+    const match = TWITCH_EMBED_RE.exec(window.parent.location.hash);
+    return match ?
+      `https://www.twitch.tv/embed/${match[1]}/chat?parent=www.destiny.gg&darkpopout` :
+      null;
+  }
+
+  function activateEmbedChat(embedChatURL) {
+    embedChatActive = true;
+
+    // only update the src attribute if it has changed to avoid unnecessary refresh
+    if (embedChatIFrame.getAttribute("src") !== embedChatURL) {
+      embedChatIFrame.setAttribute("src", embedChatURL);
+    }
+
+    dggChatIFrame.style.display = "none";
+    embedChatIFrame.style.display = "block";
+
+    embedChatToggle.innerHTML = dggChatToggleLabel;
+  }
+
+  function deactivateEmbedChat() {
+    embedChatActive = false;
+
+    embedChatIFrame.style.display = "none";
+    dggChatIFrame.style.display = "block";
+
+    embedChatToggle.innerHTML = isLive() ? ytChatToggleLabel : embedChatToggleLabel;
+  }
+
+  function toggleEmbedChat() {
+    if (embedChatActive) {
+      deactivateEmbedChat();
+      return;
+    }
+
+    const ytEmbedChatURL = getYTEmbedChatURL();
+    if (ytEmbedChatURL) {
+      activateEmbedChat(ytEmbedChatURL);
+      return;
+    }
+
+    const twitchEmbedChatURL = getTwitchEmbedChatURL();
+    if (twitchEmbedChatURL) {
+      activateEmbedChat(twitchEmbedChatURL);
+      return;
+    }
+
+    const ytLiveChatURL = getYTLiveChatURL();
+    if (ytLiveChatURL) {
+      activateEmbedChat(ytLiveChatURL);
+      return;
+    }
+  }
+
+  function addEmbedChatToggleBtn() {
+    if (livePill == undefined) {
+      return;
+    }
+
+    if (window.parent.document.getElementById("embed-chat-iframe")) {
+      removeEmbedChatToggleBtn();
+    }
+
+    // add the iframe for the embedded chat
+    embedChatIFrame = document.createElement("iframe");
+    embedChatIFrame.id = "embed-chat-iframe"
+    embedChatIFrame.style.display = "none";
+    embedChatIFrame.setAttribute("seamless", "seamless");
+    dggChatIFrame.parentNode.appendChild(embedChatIFrame);
+
+    // add the link/button for toggling the embedded chat
+    embedChatToggle = document.createElement("a");
+    embedChatToggle.id = "embed-chat-toggle";
+    embedChatToggle.className = "float-left";
+    embedChatToggle.style.width = "100px";
+    embedChatToggle.innerHTML = isLive() ? ytChatToggleLabel : embedChatToggleLabel;
+
+    embedChatToggle.addEventListener("click", toggleEmbedChat);
+
+    window.parent.document.getElementById("chat-panel-tools").insertBefore(
+      embedChatToggle,
+      window.parent.document.getElementById("refresh").nextSibling
+    );
+
+    // The height styling of the DGG chat's input element will be messed up if the DGG chat isn't visible when the chat's iframe is refreshed
+    // https://github.com/destinygg/chat-gui/blob/78910027663171870a314cc3ab3c066334b72326/assets/chat/js/chat.js#L889
+    // So, show the DGG chat before refreshing the iframe
+    window.parent.document.getElementById("refresh").addEventListener("click", deactivateEmbedChat);
+  }
+
+  function removeEmbedChatToggleBtn() {
+    if (livePill == undefined) {
+      return;
+    }
+
+    dggChatIFrame.style.display = "block";
+    window.parent.document.getElementById("embed-chat-toggle").remove();
+    window.parent.document.getElementById("embed-chat-iframe").remove();
+
+    window.parent.document.getElementById("refresh").removeEventListener("click", deactivateEmbedChat);
+  }
+
+  // create a setting to enable the link to switch the embed chat
+  let embedChatGroup = document.createElement("div");
+  embedChatGroup.className = "form-group checkbox";
+  let embedChatLabel = document.createElement("label");
+  embedChatLabel.innerHTML = "Add button to toggle to the currently embedded video's chat";
+  embedChatGroup.appendChild(embedChatLabel);
+  let embedChatCheck = document.createElement("input");
+  embedChatCheck.name = "doubleClickCopy";
+  embedChatCheck.type = "checkbox";
+  embedChatCheck.checked = config.embedChat;
+  embedChatCheck.addEventListener("change", () => {
+    config.embedChat = embedChatCheck.checked;
+    if (config.embedChat) {
+      addEmbedChatToggleBtn();
+    } else {
+      removeEmbedChatToggleBtn();
+    }
+  });
+  if (config.embedChat) {
+    addEmbedChatToggleBtn();
+  }
+  embedChatLabel.prepend(embedChatCheck);
 
   let ogtitle = undefined;
   try {
@@ -1178,44 +1345,24 @@ function injectScript() {
 
                 switch (platform) {
                   case "#youtube":
-                    GM.xmlHttpRequest({
-                      method: "GET",
-                      url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${id}`,
-                      onload: (response) => {
-                        if (errorAlert.style.display == "") {
-                          errorAlert.style.display = "none";
+                    getYoutubeStreamMetadata(id, (metadata) => {
+                      if ("title" in metadata && "author_name" in metadata) {
+                        let title = metadata["title"];
+                        let channel = metadata["author_name"];
+                        switch (config.youtubeEmbedFormat) {
+                          case 2:
+                            embedNode.text = `${platform}/${id} (${channel})`;
+                            break;
+                          case 3:
+                            embedNode.text = `${platform}/${id} (${title})`;
+                            break;
+                          case 4:
+                            embedNode.text = `${platform}/${channel}`;
+                            break;
+                          case 5:
+                            embedNode.text = `${platform}/${title}`;
+                            break;
                         }
-                        if (response.status == 200) {
-                          let data = JSON.parse(response.response);
-                          if ("title" in data && "author_name" in data) {
-                            let title = data["title"];
-                            let channel = data["author_name"];
-                            switch (config.youtubeEmbedFormat) {
-                              case 2:
-                                embedNode.text = `${platform}/${id} (${channel})`;
-                                break;
-                              case 3:
-                                embedNode.text = `${platform}/${id} (${title})`;
-                                break;
-                              case 4:
-                                embedNode.text = `${platform}/${channel}`;
-                                break;
-                              case 5:
-                                embedNode.text = `${platform}/${title}`;
-                                break;
-                            }
-                          }
-                        } else {
-                          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
-                        }
-                      },
-                      onerror: () => {
-                        errorAlert.style.display = "";
-                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
-                      },
-                      ontimeout: () => {
-                        errorAlert.style.display = "";
-                        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
                       }
                     });
                     break;
@@ -1256,6 +1403,65 @@ function injectScript() {
     embedObserver.disconnect();
   }
   editEmbedsLabel.prepend(editEmbedsCheck);
+
+  // make an observer that checks for live pill changing from embeds
+  let replaceYoutubePillName = () => {
+    let embedMatch = window.parent.location.hash.match(/^#youtube\/(.*)$/);
+    if (embedMatch) {
+      let embedId = embedMatch[1];
+      getYoutubeStreamMetadata(embedId, (metadata) => {
+        if ('author_name' in metadata) {
+          let channel = metadata['author_name'];
+
+          livePill.nextElementSibling.innerText = channel
+        }
+      });
+    }
+  };
+
+  let pillObserver = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      for (let node of mutation.addedNodes) {
+        if (livePill != undefined) {
+          replaceYoutubePillName();
+        }
+      }
+    }
+  });
+
+  // modify the styling of the pill to accommadate any longer youtube channels with spaces in the names
+  if (livePill != undefined) {
+    window.parent.document.getElementById("host-pill-name").style.whiteSpace = 'nowrap';
+  }
+
+  let editEmbedPillGroup = document.createElement("div");
+  editEmbedPillGroup.className = "form-group checkbox";
+  let editEmbedPillLabel = document.createElement("label");
+  editEmbedPillLabel.innerHTML = "Replace a YouTube embed's stream ID with the channel name in the live pill";
+  editEmbedPillGroup.appendChild(editEmbedPillLabel);
+  let editEmbedPillCheck = document.createElement("input");
+  editEmbedPillCheck.name = "editEmbedPill";
+  editEmbedPillCheck.type = "checkbox";
+  editEmbedPillCheck.checked = config.editEmbedPill;
+  editEmbedPillCheck.addEventListener("change", () => {
+    config.editEmbedPill = editEmbedPillCheck.checked;
+    if (config.editEmbedPill && livePill != undefined) {
+      pillObserver.observe(livePill, {
+        childList: true
+      });
+    } else {
+      pillObserver.disconnect();
+    }
+  });
+  if (config.editEmbedPill && livePill != undefined) {
+    replaceYoutubePillName();
+    pillObserver.observe(livePill, {
+      childList: true
+    });
+  } else {
+    pillObserver.disconnect();
+  }
+  editEmbedPillLabel.prepend(editEmbedPillCheck);
 
   // creating a setting to prevent enter from working if you have a banned phrase in the message
   let preventEnterGroup = document.createElement("div");
@@ -1533,6 +1739,7 @@ function injectScript() {
   // appending all the settings to our area
   settingsArea.appendChild(alwaysScrollDownGroup);
   settingsArea.appendChild(doubleClickCopyGroup);
+  settingsArea.appendChild(embedChatGroup);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
   settingsArea.appendChild(changeTitleOnLiveGroup);
@@ -1570,6 +1777,7 @@ function injectScript() {
   settingsArea.appendChild(ignoredPhrasesGroup);
   settingsArea.appendChild(preventEnterGroup);
   settingsArea.appendChild(editEmbedsGroup);
+  settingsArea.appendChild(editEmbedPillGroup);
 
   // https://www.npmjs.com/package/text-ellipsis
   // cut off a string if too long
@@ -1596,7 +1804,7 @@ function injectScript() {
     constructor() {
       this.bigscreenPath = "/bigscreen";
       this.bigscreenregex = new RegExp(
-        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
+        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|#rumble|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
         "g"
       );
 
@@ -1767,6 +1975,17 @@ function injectScript() {
                 '" target ="_blank">(source)</a>';
               break;
           }
+          break;
+        case "#rumble":
+          source = "https://rumble.com/embed/" + str.split("/")[1];
+          replacerString =
+            '$1<a class="externallink bookmarklink" href="' +
+            this.url +
+            '$2" target="' +
+            target +
+            '">$2</a> <a class="externallink bookmarklink" href="' +
+            source +
+            '" target ="_blank">(source)</a>';
           break;
         case "strims.gg":
         case "strims.gg/angelthump":
@@ -2463,4 +2682,32 @@ function injectScript() {
       ).update();
     }
   });
+
+  // helper function to query youtube with a stream id to get metadata about that stream, including the stream's title and the channel's name
+  // the metadata is passed into the given callback function
+  function getYoutubeStreamMetadata(youTubeStreamId, callback) {
+    GM.xmlHttpRequest({
+      method: 'GET',
+      url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${youTubeStreamId}`,
+      onload: (response) => {
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
+        if (response.status == 200) {
+          let data = JSON.parse(response.response);
+          callback(data);
+        } else {
+          console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP status code: ${response.status} - ${response.statusText}`);
+        }
+      },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the youtube oEmbed data - HTTP timeout`);
+      }
+    });
+  }
 }
