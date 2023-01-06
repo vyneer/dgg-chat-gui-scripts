@@ -9,6 +9,12 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 
 - ...
 
+## [1.7.2] - 2022-12-31
+
+### Added
+- Add an option to update the live pill for Youtube stream with channel name (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+- Add Rumble embeds
+
 ## [1.7.1] - 2022-10-10
 
 ### Fixed
