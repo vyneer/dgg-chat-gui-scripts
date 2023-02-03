@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.7.2
+// @version      1.7.3
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -17,6 +17,9 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.7.3 - 2023-02-03
+// * added an option to embed a hosted stream's chat, same as embedded stream or live YT chat (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+// * fixed settings menu not scrolling
 // v1.7.2 - 2022-12-31
 // * add an option to update the live pill for Youtube stream with channel name (big thanks to @mattroseman <3)
 // * add Rumble embeds
@@ -46,8 +49,6 @@
 // * add an option to stick recent mentions to top of chat (big PepoTurkey to Voiture gobl)
 // * add an option to ignore certain phrases, decoupled from harsh ignore setting (big PepoTurkey to Voiture gobl)
 // * add an option to double click a username to append it to the input box (big thanks to @mattroseman <3)
-// v1.5.2 - 2022-04-20
-// * add all strims links
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
@@ -549,7 +550,6 @@ function injectScript() {
     // if we havent opened the dgg utils settings pane before, make it scrollable with the nanoscroller thing 
     if (!settingsInit) {
       settingsInit = true;
-      $("#util-settings .nano").nanoScroller();
     }
   })
   // make sure we close the settings pane when we click on any of the other buttons in the bottom panel
@@ -597,6 +597,7 @@ function injectScript() {
   // combined nanoscroller layer
   let nano = document.createElement("div");
   nano.className = "scrollable nano has-scrollbar";
+  nano.style.overflowY = "auto";
   settingsAreaOuter.appendChild(nano);
   // content layer
   let nanoContent = document.createElement("div");
@@ -685,6 +686,7 @@ function injectScript() {
   const dggChatToggleLabel = "DGG Chat";
   const embedChatToggleLabel = "Embed Chat";
   const ytChatToggleLabel = "Youtube Chat";
+  const hostChatToggleLabel = "Host Chat";
   let dggChatIFrame;
   if (livePill != undefined) {
     dggChatIFrame = window.parent.document.getElementById("chat-wrap").getElementsByTagName("iframe")[0];
@@ -696,13 +698,25 @@ function injectScript() {
   const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
   const TWITCH_EMBED_RE = /^#twitch\/(.*)$/
 
+  const STORAGE_STREAM_INFO_KEY = "dggApi:streamInfo";
+  const STORAGE_HOST_INFO_KEY = "dggApi:hosting";
+
+  function isEmbed() {
+    return getYTEmbedChatURL() != null || getTwitchEmbedChatURL() != null;
+  }
+
   function isLive() {
-    const streamInfo = JSON.parse(localStorage.getItem("dggApi:streamInfo"));
+    const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
     return streamInfo.streams.youtube.live || false;
   }
 
+  function isHost() {
+    const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
+    return hostInfo.id != null;
+  }
+
   function getYTStreamId() {
-    const streamInfo = JSON.parse(localStorage.getItem("dggApi:streamInfo"));
+    const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
     return streamInfo.streams.youtube.id;
   }
 
@@ -712,6 +726,19 @@ function injectScript() {
     }
 
     return null;
+  }
+
+  function getHostChatURL() {
+    if (isHost()) {
+      const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
+
+      switch(hostInfo.platform) {
+        case 'youtube':
+          return `https://www.youtube.com/live_chat?v=${hostInfo.id}&embed_domain=www.destiny.gg`;
+        case 'twitch':
+          return `https://www.twitch.tv/embed/${hostInfo.id}/chat?parent=www.destiny.gg&darkpopout`;
+      }
+    }
   }
 
   function getYTEmbedChatURL() {
@@ -726,6 +753,18 @@ function injectScript() {
     return match ?
       `https://www.twitch.tv/embed/${match[1]}/chat?parent=www.destiny.gg&darkpopout` :
       null;
+  }
+
+  function getEmbedChatToggleButtonText() {
+    if (isEmbed()) {
+      return embedChatToggleLabel;
+    } else if (isLive()) {
+      return ytChatToggleLabel;
+    } else if (isHost()) {
+      return hostChatToggleLabel;
+    }
+
+    return embedChatToggleLabel;
   }
 
   function activateEmbedChat(embedChatURL) {
@@ -748,7 +787,7 @@ function injectScript() {
     embedChatIFrame.style.display = "none";
     dggChatIFrame.style.display = "block";
 
-    embedChatToggle.innerHTML = isLive() ? ytChatToggleLabel : embedChatToggleLabel;
+    embedChatToggle.innerHTML = getEmbedChatToggleButtonText();
   }
 
   function toggleEmbedChat() {
@@ -774,6 +813,12 @@ function injectScript() {
       activateEmbedChat(ytLiveChatURL);
       return;
     }
+
+    const hostChatURL = getHostChatURL();
+    if (hostChatURL) {
+      activateEmbedChat(hostChatURL);
+      return;
+    }
   }
 
   function addEmbedChatToggleBtn() {
@@ -797,7 +842,7 @@ function injectScript() {
     embedChatToggle.id = "embed-chat-toggle";
     embedChatToggle.className = "float-left";
     embedChatToggle.style.width = "100px";
-    embedChatToggle.innerHTML = isLive() ? ytChatToggleLabel : embedChatToggleLabel;
+    embedChatToggle.innerHTML = getEmbedChatToggleButtonText();
 
     embedChatToggle.addEventListener("click", toggleEmbedChat);
 
