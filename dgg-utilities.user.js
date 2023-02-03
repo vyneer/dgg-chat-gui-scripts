@@ -552,7 +552,6 @@ function injectScript() {
     // if we havent opened the dgg utils settings pane before, make it scrollable with the nanoscroller thing 
     if (!settingsInit) {
       settingsInit = true;
-      $("#util-settings .nano").nanoScroller();
     }
   })
   // make sure we close the settings pane when we click on any of the other buttons in the bottom panel
@@ -600,6 +599,7 @@ function injectScript() {
   // combined nanoscroller layer
   let nano = document.createElement("div");
   nano.className = "scrollable nano has-scrollbar";
+  nano.style.overflowY = "auto";
   settingsAreaOuter.appendChild(nano);
   // content layer
   let nanoContent = document.createElement("div");
