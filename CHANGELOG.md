@@ -7,6 +7,7 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 
 ## [Unreleased]
 
+- Added an option to embed a hosted stream's chat, same as embedded stream or live YT chat (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
 - ...
 
 ## [1.7.2] - 2022-12-31
