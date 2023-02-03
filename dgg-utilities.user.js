@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.7.2
+// @version      1.7.3
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -17,6 +17,9 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.7.3 - 2023-02-03
+// * added an option to embed a hosted stream's chat, same as embedded stream or live YT chat (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+// * fixed settings menu not scrolling
 // v1.7.2 - 2022-12-31
 // * add an option to update the live pill for Youtube stream with channel name (big thanks to @mattroseman <3)
 // * add Rumble embeds
@@ -46,8 +49,6 @@
 // * add an option to stick recent mentions to top of chat (big PepoTurkey to Voiture gobl)
 // * add an option to ignore certain phrases, decoupled from harsh ignore setting (big PepoTurkey to Voiture gobl)
 // * add an option to double click a username to append it to the input box (big thanks to @mattroseman <3)
-// v1.5.2 - 2022-04-20
-// * add all strims links
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
