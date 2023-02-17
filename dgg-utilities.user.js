@@ -144,6 +144,7 @@ const configItems = {
   preventEnter      : new ConfigItem("preventEnter",       false   ),
   hiddenFlairs      : new ConfigItem("hiddenFlairs",       []      ),
   stickyMentions    : new ConfigItem("stickyMentions",     false   ),
+  stickyWhispers    : new ConfigItem("stickyWhispers",     false   ),
   ignorePhrases     : new ConfigItem("ignorePhrases",      false   ),
   ignoredPhraseList : new ConfigItem("ignoredPhraseList",  []      ),
 };
@@ -1690,6 +1691,40 @@ function injectScript() {
   `;
   toggleStickyMentions(config.stickyMentions);
 
+  // creating a setting to toggle whispers being stuck to top of window when scrolled past
+  const stickyWhispersGroup = document.createElement("div");
+  stickyWhispersGroup.className = "form-group checkbox";
+  const stickyWhispersLabel = document.createElement("label");
+  stickyWhispersLabel.innerHTML = "Stick in-line whispers to top of chat";
+  stickyWhispersLabel.title = "Keeps in-line whispers stuck to top of chat when scrolled past";
+  stickyWhispersGroup.appendChild(stickyWhispersLabel);
+  const stickyWhispersCheck = document.createElement("input");
+  stickyWhispersCheck.name = "stickyWhispers";
+  stickyWhispersCheck.type = "checkbox";
+  stickyWhispersCheck.checked = config.stickyWhispers;
+  function toggleStickyWhispers(toggle) {
+    document
+      .getElementById("chat-win-main")
+      .classList
+      .toggle("vyneer-util-sticky-whispers-on", toggle);
+  }
+  stickyWhispersCheck.addEventListener("change", () => {
+    config.stickyWhispers = stickyWhispersCheck.checked;
+    toggleStickyWhispers(config.stickyWhispers);
+  });
+  stickyWhispersLabel.prepend(stickyWhispersCheck);
+  settingsCss += `
+    #chat-win-main.vyneer-util-sticky-whispers-on .msg-whisper {
+      position: sticky;
+      top: 0px;
+      z-index: 121;
+      border-bottom-style: inset;
+      border-bottom-width: 2px;
+      border-bottom-color: #080808;
+    }
+  `;
+  toggleStickyWhispers(config.stickyWhispers);
+
   // Ignored phrases
   const ignoredPhrasesGroup = document.createElement("div");
   ignoredPhrasesGroup.className = "form-group checkbox";
@@ -1794,6 +1829,7 @@ function injectScript() {
   embedsTitle.innerHTML = "Utilities Embeds Settings";
   settingsArea.appendChild(changeTitleOnLiveGroup);
   settingsArea.appendChild(stickyMentionsGroup);
+  settingsArea.appendChild(stickyWhispersGroup);
   settingsArea.appendChild(embedIconStyleGroup);
   settingsArea.appendChild(hideFlairsGroup);
   settingsArea.appendChild(embedsTitle);
