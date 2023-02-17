@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.7.3
+// @version      1.7.4
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -17,6 +17,10 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.7.4 - 2023-02-17
+// * added an option to stick in-line mentions to top of chat (big PepoTurkey to Voiture for the idea (gobl))
+// * fixed the whole script breaking sometimes when "Add button to toggle to the currently embedded video's chat" was on (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+// * fixed chat losing scroll position when "Format YouTube embeds directly in messages according to Utilities settings" formatted an embed
 // v1.7.3 - 2023-02-03
 // * added an option to embed a hosted stream's chat, same as embedded stream or live YT chat (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
 // * fixed settings menu not scrolling
@@ -37,18 +41,6 @@
 // * focus the chat input after double clicking a username to copy to input (big thanks to @mattroseman <3)
 // * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
 // * switch to the timestamp update model (might be buggy, but hopefully not)
-// v1.6 - 2022-04-23
-// * add an option to prevent you from sending a message containing a banned/nuked phrase
-// * add an option to format yt embeds directly in messages
-// * add an option to select the embed button icon (thanks Igor for the outline version, thanks Voiture for the SVG version! <3)
-// * add an option to color the text area when mutelinks is on
-// * if you hover over the mutelinks icon a popup makes it more clear what's happening
-// * add an option to add 'LIVE' to title when watching on bigscreen
-// * firemonkey compatibility
-// * add an option to hide individual flairs (big thanks to Voiture <3)
-// * add an option to stick recent mentions to top of chat (big PepoTurkey to Voiture gobl)
-// * add an option to ignore certain phrases, decoupled from harsh ignore setting (big PepoTurkey to Voiture gobl)
-// * add an option to double click a username to append it to the input box (big thanks to @mattroseman <3)
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
