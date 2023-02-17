@@ -1414,6 +1414,11 @@ function injectScript() {
                             embedNode.text = `${platform}/${title}`;
                             break;
                         }
+                        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+                          chatlines.scrollTop = chatlines.scrollHeight;
+                        } else {
+                          chatlines.scrollLeft = chatlines.scrollWidth;
+                        }
                       }
                     });
                     break;
