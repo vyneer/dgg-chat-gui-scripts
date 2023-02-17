@@ -9,6 +9,17 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 
 - ...
 
+## [1.7.4] - 2023-02-17
+
+### Added
+
+- Added an option to stick in-line mentions to top of chat (big PepoTurkey to Voiture for the idea (gobl))
+
+### Fixed
+
+- The script breaking sometimes when "Add button to toggle to the currently embedded video's chat" was on (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+- Chat losing scroll position when "Format YouTube embeds directly in messages according to Utilities settings" formatted an embed
+
 ## [1.7.3] - 2023-02-03
 
 ### Added
