@@ -707,12 +707,14 @@ function injectScript() {
 
   function isLive() {
     const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
-    return streamInfo.streams.youtube.live || false;
+
+    return streamInfo && (streamInfo?.streams?.youtube?.live || false);
   }
 
   function isHost() {
     const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
-    return hostInfo.id != null;
+
+    return hostInfo && hostInfo.id != null;
   }
 
   function getYTStreamId() {
