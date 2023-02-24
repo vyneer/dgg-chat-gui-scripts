@@ -10,6 +10,7 @@
 // @allFrames    true
 // @grant        GM.xmlHttpRequest
 // @connect      vyneer.me
+// @connect      mitchdev.net
 // @connect      youtube.com
 // @downloadURL  none
 // @homepageURL  https://github.com/vyneer/dgg-chat-gui-scripts
