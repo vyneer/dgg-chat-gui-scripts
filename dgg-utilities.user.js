@@ -786,14 +786,29 @@ function injectScript() {
       method: 'GET',
       url: `https://rumble.com/embed/${embedId}`,
       onload: (response) => {
-        const body = response.responseText;
-        const chatIdMatch = body.match(/"vid"\s*:\s*(\d+)\s*,/);
-        if (!chatIdMatch) return;
-        const chatId = chatIdMatch[1];
+        if (errorAlert.style.display == "") {
+          errorAlert.style.display = "none";
+        }
+        if (response.status == 200) {
+          const body = response.responseText;
+          const chatIdMatch = body.match(/"vid"\s*:\s*(\d+)\s*,/);
+          if (!chatIdMatch) return;
+          const chatId = chatIdMatch[1];
 
-        const chatURL = `https://rumble.com/chat/popup/${chatId}`;
-        rumbleChatURLCache[embedId] = chatURL;
-        callback(chatURL);
+          const chatURL = `https://rumble.com/chat/popup/${chatId}`;
+          rumbleChatURLCache[embedId] = chatURL;
+          callback(chatURL);
+        } else {
+          console.error(`[ERROR] [dgg-utils] couldn't get the rumble stream's chat id - HTTP status code: ${response.status} - ${response.statusText}`);
+        }
+      },
+      onerror: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the rumble stream's chat id - HTTP error`);
+      },
+      ontimeout: () => {
+        errorAlert.style.display = "";
+        console.error(`[ERROR] [dgg-utils] couldn't get the rumble stream's chat id - HTTP timeout`);
       }
     });
   }
