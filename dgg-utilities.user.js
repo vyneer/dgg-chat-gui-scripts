@@ -12,7 +12,6 @@
 // @connect      vyneer.me
 // @connect      mitchdev.net
 // @connect      youtube.com
-// @connect      rumble.com
 // @downloadURL  none
 // @homepageURL  https://github.com/vyneer/dgg-chat-gui-scripts
 // @icon         data:image/png;base64,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
@@ -702,7 +701,7 @@ function injectScript() {
 
   const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
   const TWITCH_EMBED_RE = /^#twitch\/(.*)$/
-  const RUMBLE_EMBED_RE = /^#rumble\/(.*)$/
+  const RUMBLE_EMBED_RE = /^#rumble\/v(.*)$/
 
   const STORAGE_STREAM_INFO_KEY = "dggApi:streamInfo";
   const STORAGE_HOST_INFO_KEY = "dggApi:hosting";
@@ -710,7 +709,7 @@ function injectScript() {
   function isEmbed() {
     return getYTEmbedChatURL() != null ||
       getTwitchEmbedChatURL() != null ||
-      isRumbleEmbedded();
+      getRumbleEmbedChatURL() != null;
   }
 
   function isLive() {
@@ -765,52 +764,16 @@ function injectScript() {
       null;
   }
 
-
-  function isRumbleEmbedded() {
-    return RUMBLE_EMBED_RE.exec(window.parent.location.hash) != null;
-  }
-  const rumbleChatURLCache = {};
-  function getRumbleEmbedChatURL(callback) {
+  function getRumbleEmbedChatURL() {
     const embedIdMatch = RUMBLE_EMBED_RE.exec(window.parent.location.hash);
-    if (!embedIdMatch) return;
+    if (!embedIdMatch) return null;
     const embedId = embedIdMatch[1];
 
-    // memoize the id of the chat based on the embedded video's id, to avoid unnecessary HTTP requests
-    if (embedId in rumbleChatURLCache) {
-      callback(rumbleChatURLCache[embedId]);
-      return;
-    }
-
-    // fetch the HTML of the rumble page for the given matched stream id
-    GM.xmlHttpRequest({
-      method: 'GET',
-      url: `https://rumble.com/embed/${embedId}`,
-      onload: (response) => {
-        if (errorAlert.style.display == "") {
-          errorAlert.style.display = "none";
-        }
-        if (response.status == 200) {
-          const body = response.responseText;
-          const chatIdMatch = body.match(/"vid"\s*:\s*(\d+)\s*,/);
-          if (!chatIdMatch) return;
-          const chatId = chatIdMatch[1];
-
-          const chatURL = `https://rumble.com/chat/popup/${chatId}`;
-          rumbleChatURLCache[embedId] = chatURL;
-          callback(chatURL);
-        } else {
-          console.error(`[ERROR] [dgg-utils] couldn't get the rumble stream's chat id - HTTP status code: ${response.status} - ${response.statusText}`);
-        }
-      },
-      onerror: () => {
-        errorAlert.style.display = "";
-        console.error(`[ERROR] [dgg-utils] couldn't get the rumble stream's chat id - HTTP error`);
-      },
-      ontimeout: () => {
-        errorAlert.style.display = "";
-        console.error(`[ERROR] [dgg-utils] couldn't get the rumble stream's chat id - HTTP timeout`);
-      }
-    });
+    // a rumble stream's chat id is the base 10 representation of the embed id (which itself is base 36)
+    const chatId = parseInt(embedId, 36);
+    return Number.isInteger(chatId) ?
+      `https://rumble.com/chat/popup/${chatId}` :
+      null;
   }
 
   function getEmbedChatToggleButtonText() {
@@ -866,12 +829,9 @@ function injectScript() {
       return;
     }
 
-    // Rumble follows a slightly different flow than the other counterparts.
-    // Rumble requires an additional request to get the chat's id, requiring a callback, requiring a slightly differnet flow
-    if (isRumbleEmbedded()) {
-      getRumbleEmbedChatURL((rumbleEmbedChatURL) => {
-        activateEmbedChat(rumbleEmbedChatURL);
-      });
+    const rumbleEmbedChatURL = getRumbleEmbedChatURL();
+    if (rumbleEmbedChatURL) {
+      activateEmbedChat(rumbleEmbedChatURL);
       return;
     }
 
