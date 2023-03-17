@@ -701,12 +701,15 @@ function injectScript() {
 
   const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
   const TWITCH_EMBED_RE = /^#twitch\/(.*)$/
+  const RUMBLE_EMBED_RE = /^#rumble\/v(.*)$/
 
   const STORAGE_STREAM_INFO_KEY = "dggApi:streamInfo";
   const STORAGE_HOST_INFO_KEY = "dggApi:hosting";
 
   function isEmbed() {
-    return getYTEmbedChatURL() != null || getTwitchEmbedChatURL() != null;
+    return getYTEmbedChatURL() != null ||
+      getTwitchEmbedChatURL() != null ||
+      getRumbleEmbedChatURL() != null;
   }
 
   function isLive() {
@@ -761,6 +764,18 @@ function injectScript() {
       null;
   }
 
+  function getRumbleEmbedChatURL() {
+    const embedIdMatch = RUMBLE_EMBED_RE.exec(window.parent.location.hash);
+    if (!embedIdMatch) return null;
+    const embedId = embedIdMatch[1];
+
+    // a rumble stream's chat id is the base 10 representation of the embed id (which itself is base 36)
+    const chatId = parseInt(embedId, 36);
+    return Number.isInteger(chatId) ?
+      `https://rumble.com/chat/popup/${chatId}` :
+      null;
+  }
+
   function getEmbedChatToggleButtonText() {
     if (isEmbed()) {
       return embedChatToggleLabel;
@@ -811,6 +826,12 @@ function injectScript() {
     const twitchEmbedChatURL = getTwitchEmbedChatURL();
     if (twitchEmbedChatURL) {
       activateEmbedChat(twitchEmbedChatURL);
+      return;
+    }
+
+    const rumbleEmbedChatURL = getRumbleEmbedChatURL();
+    if (rumbleEmbedChatURL) {
+      activateEmbedChat(rumbleEmbedChatURL);
       return;
     }
 
