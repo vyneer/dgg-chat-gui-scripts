@@ -687,7 +687,7 @@ function injectScript() {
   doubleClickCopyLabel.prepend(doubleClickCopyCheck);
 
   // =============================================================
-  // Icons and HTML elements for managine the DGG & embedded chats
+  // Icons and HTML elements for managing the DGG & embedded chats
   // =============================================================
 
   const DGG_CHAT_ICON = `
@@ -803,6 +803,19 @@ function injectScript() {
     return match ? match[1] : null
   }
 
+  function getYoutubeHostId() {
+    const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
+    return hostInfo?.platform === 'youtube' ? hostInfo.id : null;
+  }
+  function getTwitchHostId() {
+    const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
+    return hostInfo?.platform === 'twitch' ? hostInfo.id : null;
+  }
+  function getRumbleHostId() {
+    const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
+    return hostInfo?.platform === 'rumble' ? hostInfo.id : null;
+  }
+
   function getYoutubeLiveId() {
     const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
     return streamInfo?.streams?.youtube?.id;
@@ -813,17 +826,17 @@ function injectScript() {
   }
 
   function getTwitchChatURL() {
-    const twitchEmbedId = getTwitchEmbedId();
+    const twitchEmbedId = getTwitchEmbedId() || getTwitchHostId();
     return twitchEmbedId ? `https://www.twitch.tv/embed/${twitchEmbedId}/chat?parent=www.destiny.gg&darkpopout` : null;
   }
   function getYoutubeChatURL() {
     // if the user is embedding a video while the stream is live, the embedded id will be favored
-    const youtubeEmbedId = getYoutubeEmbedId() || getYoutubeLiveId();
+    const youtubeEmbedId = getYoutubeEmbedId() || getYoutubeLiveId() || getYoutubeHostId();
     return youtubeEmbedId ? `https://www.youtube.com/live_chat?v=${youtubeEmbedId}&embed_domain=www.destiny.gg` : null;
   }
   function getRumbleChatURL() {
     // if the user is embedding a video while the stream is live, the embedded id will be favored
-    const rumbleEmbedId = getRumbleEmbedId() || getRumbleLiveId();
+    let rumbleEmbedId = getRumbleEmbedId() || getRumbleLiveId() || getRumbleHostId();
     if (!rumbleEmbedId) return null;
     // remove the 'v' prefix if present, as it's technically not a part of the rumble embed's id
     if (rumbleEmbedId[0] === 'v') {
