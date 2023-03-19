@@ -930,7 +930,7 @@ function injectScript() {
     }
 
     dggChatIFrame.style.display = "block";
-    window.parent.document.getElementById("embed-chat-toggle").remove();
+    window.parent.document.getElementById("embed-chat-btns-container").remove();
     window.parent.document.getElementById("embed-chat-iframe").remove();
 
     window.parent.document.getElementById("refresh").removeEventListener("click", deactivateEmbedChat);
