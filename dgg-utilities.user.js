@@ -848,6 +848,19 @@ function injectScript() {
     rumbleChatButton.style.display = getRumbleChatURL() ? 'flex' : 'none';
   }
 
+  // observer which responds to changes to the embedded stream iframe, and triggers an update of the embedded chat buttons
+  const embeddedStreamObserver = new MutationObserver((mutations, observer) => {
+    for (const mutation of mutations) {
+      if (
+        Array.from(mutation.addedNodes.values()).some(elem => elem.nodeName === 'IFRAME') ||
+        Array.from(mutation.removedNodes.values()).some(elem => elem.nodeName === 'IFRAME') ||
+        mutation.attributeName === 'src'
+      ) {
+        updateEmbedChatButtons();
+      }
+    }
+  });
+
   function deactivateEmbedChat() {
     embedChatActive = false;
 
@@ -893,8 +906,6 @@ function injectScript() {
     }
   }
 
-  // TODO add mutation observers on embeds and going live
-
   // =========================================================================================
   // Logic for the embedded chat settings, and functions for enabling or disabling the feature
   // =========================================================================================
@@ -926,6 +937,9 @@ function injectScript() {
     // https://github.com/destinygg/chat-gui/blob/78910027663171870a314cc3ab3c066334b72326/assets/chat/js/chat.js#L889
     // So, show the DGG chat before refreshing the iframe
     window.parent.document.getElementById("refresh").addEventListener("click", deactivateEmbedChat);
+
+    // observe any changes to the embedded stream iframe (additions or removals of the iframe or modifications to the 'src' attribute)
+    embeddedStreamObserver.observe(window.parent.document.getElementById('stream-wrap'), {childList: true, attributes: true, attributeFilter: ['src']});
   }
 
   function removeEmbedChatToggleBtn() {
@@ -938,6 +952,8 @@ function injectScript() {
     window.parent.document.getElementById("embed-chat-iframe").remove();
 
     window.parent.document.getElementById("refresh").removeEventListener("click", deactivateEmbedChat);
+
+    embeddedStreamObserver.disconnect();
   }
 
   // create a setting to enable the link to switch the embed chat
