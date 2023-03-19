@@ -724,8 +724,8 @@ function injectScript() {
     'justify-content': 'center',
     'align-items': 'center',
 
-    'height': '20px',
-    'width': '20px',
+    'height': '15px',
+    'width': '15px',
 
     'margin-right': '5px'
   };
@@ -773,7 +773,7 @@ function injectScript() {
   embedChatButtonsContainer.appendChild(rumbleChatButton);
 
   // =========================================
-  // Functions for managine the embedded chats 
+  // Functions for managing the embedded chats 
   // =========================================
 
   const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
@@ -817,10 +817,12 @@ function injectScript() {
     return twitchEmbedId ? `https://www.twitch.tv/embed/${twitchEmbedId}/chat?parent=www.destiny.gg&darkpopout` : null;
   }
   function getYoutubeChatURL() {
+    // if the user is embedding a video while the stream is live, the embedded id will be favored
     const youtubeEmbedId = getYoutubeEmbedId() || getYoutubeLiveId();
     return youtubeEmbedId ? `https://www.youtube.com/live_chat?v=${youtubeEmbedId}&embed_domain=www.destiny.gg` : null;
   }
   function getRumbleChatURL() {
+    // if the user is embedding a video while the stream is live, the embedded id will be favored
     const rumbleEmbedId = getRumbleEmbedId() || getRumbleLiveId();
     if (!rumbleEmbedId) return null;
 
@@ -889,6 +891,10 @@ function injectScript() {
 
   // TODO add mutation observers on embeds and going live
 
+  // =========================================================================================
+  // Logic for the embedded chat settings, and functions for enabling or disabling the feature
+  // =========================================================================================
+
   function addEmbedChatToggleBtn() {
     if (livePill == undefined) {
       return;
@@ -904,35 +910,6 @@ function injectScript() {
     embedChatIFrame.style.display = "none";
     embedChatIFrame.setAttribute("seamless", "seamless");
     dggChatIFrame.parentNode.appendChild(embedChatIFrame);
-
-    // add the link/button for toggling the embedded chat
-    // embedChatToggle = document.createElement("a");
-    // embedChatToggle.id = "embed-chat-toggle";
-    // embedChatToggle.className = "float-left";
-    // embedChatToggle.style.width = "100px";
-    // embedChatToggle.innerHTML = getEmbedChatToggleButtonText();
-//     embedChatToggle = document.createElement('div');
-//     embedChatToggle.id = 'embedded-chats-container';
-//     embedChatToggle.className += 'float-left';
-//     Object.assign(embedChatToggle.style, {
-//       'display': 'flex',
-//       'flex-direction': 'row',
-//       'justify-content': 'center',
-//       'align-items': 'center',
-// 
-//       'height': '100%',
-// 
-//       'color': '#444444'
-//     });
-//     embedChatToggle.innerHTML = `
-// <a style="height: 20px; width: 20px; margin-right: 5px;">${dggChatIcon}</a>
-// <a style="height: 20px; width: 20px; margin-right: 5px;">${twitchChatIcon}</a>
-// <a style="height: 20px; width: 20px; margin-right: 5px;">${youtubeChatIcon}</a>
-// <a style="height: 20px; width: 20px; margin-right: 5px;">${rumbleChatIcon}</a>
-// <a style="height: 20px; width: 20px; margin-right: 5px;">${kickChatIcon}</a>
-//     `;
-// 
-//     embedChatToggle.addEventListener("click", toggleEmbedChat);
 
     window.parent.document.getElementById("chat-panel-tools").insertBefore(
       embedChatButtonsContainer,
@@ -958,127 +935,6 @@ function injectScript() {
 
     window.parent.document.getElementById("refresh").removeEventListener("click", deactivateEmbedChat);
   }
-
-  /*
-  function getYTLiveChatURL() {
-    if (isLive()) {
-      return `https://www.youtube.com/live_chat?v=${getYTStreamId()}&embed_domain=www.destiny.gg`;
-    }
-
-    return null;
-  }
-
-  function getHostChatURL() {
-    if (isHost()) {
-      const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
-
-      switch(hostInfo.platform) {
-        case 'youtube':
-          return `https://www.youtube.com/live_chat?v=${hostInfo.id}&embed_domain=www.destiny.gg`;
-        case 'twitch':
-          return `https://www.twitch.tv/embed/${hostInfo.id}/chat?parent=www.destiny.gg&darkpopout`;
-      }
-    }
-  }
-
-  function getYTEmbedChatURL() {
-    const match = YOUTUBE_EMBED_RE.exec(window.parent.location.hash);
-    return match ?
-      `https://www.youtube.com/live_chat?v=${match[1]}&embed_domain=www.destiny.gg` :
-      null;
-  }
-
-  function getTwitchEmbedChatURL() {
-    const match = TWITCH_EMBED_RE.exec(window.parent.location.hash);
-    return match ?
-      `https://www.twitch.tv/embed/${match[1]}/chat?parent=www.destiny.gg&darkpopout` :
-      null;
-  }
-
-  function getRumbleEmbedChatURL() {
-    const embedIdMatch = RUMBLE_EMBED_RE.exec(window.parent.location.hash);
-    if (!embedIdMatch) return null;
-    const embedId = embedIdMatch[1];
-
-    // a rumble stream's chat id is the base 10 representation of the embed id (which itself is base 36)
-    const chatId = parseInt(embedId, 36);
-    return Number.isInteger(chatId) ?
-      `https://rumble.com/chat/popup/${chatId}` :
-      null;
-  }
-
-  function getEmbedChatToggleButtonText() {
-    if (isEmbed()) {
-      return embedChatToggleLabel;
-    } else if (isLive()) {
-      return ytChatToggleLabel;
-    } else if (isHost()) {
-      return hostChatToggleLabel;
-    }
-
-    return embedChatToggleLabel;
-  }
-
-  function activateEmbedChat(embedChatURL) {
-    embedChatActive = true;
-
-    // only update the src attribute if it has changed to avoid unnecessary refresh
-    if (embedChatIFrame.getAttribute("src") !== embedChatURL) {
-      embedChatIFrame.setAttribute("src", embedChatURL);
-    }
-
-    dggChatIFrame.style.display = "none";
-    embedChatIFrame.style.display = "block";
-
-    embedChatToggle.innerHTML = dggChatToggleLabel;
-  }
-
-  function deactivateEmbedChat() {
-    embedChatActive = false;
-
-    embedChatIFrame.style.display = "none";
-    dggChatIFrame.style.display = "block";
-
-    embedChatToggle.innerHTML = getEmbedChatToggleButtonText();
-  }
-
-  function toggleEmbedChat() {
-    if (embedChatActive) {
-      deactivateEmbedChat();
-      return;
-    }
-
-    const ytEmbedChatURL = getYTEmbedChatURL();
-    if (ytEmbedChatURL) {
-      activateEmbedChat(ytEmbedChatURL);
-      return;
-    }
-
-    const twitchEmbedChatURL = getTwitchEmbedChatURL();
-    if (twitchEmbedChatURL) {
-      activateEmbedChat(twitchEmbedChatURL);
-      return;
-    }
-
-    const rumbleEmbedChatURL = getRumbleEmbedChatURL();
-    if (rumbleEmbedChatURL) {
-      activateEmbedChat(rumbleEmbedChatURL);
-      return;
-    }
-
-    const ytLiveChatURL = getYTLiveChatURL();
-    if (ytLiveChatURL) {
-      activateEmbedChat(ytLiveChatURL);
-      return;
-    }
-
-    const hostChatURL = getHostChatURL();
-    if (hostChatURL) {
-      activateEmbedChat(hostChatURL);
-      return;
-    }
-  }
-  */
 
   // create a setting to enable the link to switch the embed chat
   let embedChatGroup = document.createElement("div");
