@@ -778,7 +778,7 @@ function injectScript() {
 
   const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
   const TWITCH_EMBED_RE = /^#twitch\/(.*)$/
-  const RUMBLE_EMBED_RE = /^#rumble\/v(.*)$/
+  const RUMBLE_EMBED_RE = /^#rumble\/(.*)$/
 
   const STORAGE_STREAM_INFO_KEY = "dggApi:streamInfo";
   const STORAGE_HOST_INFO_KEY = "dggApi:hosting";
@@ -825,6 +825,10 @@ function injectScript() {
     // if the user is embedding a video while the stream is live, the embedded id will be favored
     const rumbleEmbedId = getRumbleEmbedId() || getRumbleLiveId();
     if (!rumbleEmbedId) return null;
+    // remove the 'v' prefix if present, as it's technically not a part of the rumble embed's id
+    if (rumbleEmbedId[0] === 'v') {
+      rumbleEmbedId = rumbleEmbedId.slice(1);
+    }
 
     // a rumble stream's chat id is the base 10 representation of the embed id (which itself is base 36)
     const chatId = parseInt(rumbleEmbedId, 36);
