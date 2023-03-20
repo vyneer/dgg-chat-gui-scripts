@@ -691,7 +691,7 @@ function injectScript() {
   // =============================================================
 
   const DGG_CHAT_ICON = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1960 1960" fill="currentColor" style="vertical-align: baseline;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1960 1960" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
     <g>
         <path d="M0 980 l0 -980 980 0 980 0 0 980 0 980 -980 0 -980 0 0 -980z m1810 615 l0 -185 -117 0 -116 0 -116 123 c-64 67 -142 150 -175 185 l-59 62 291 0 292 0 0 -185z m-597 -30 l187 -194 0 -402 0 -401 -184 -191 -183 -192 -437 -3 -436 -2 0 790 0 790 433 0 433 0 187 -195z m597 -1230 l0 -185 -292 0 -291 0 24 27 c13 15 91 98 173 185 l150 158 118 0 118 0 0 -185z"/>
         <path d="M670 980 l0 -550 65 0 65 0 0 550 0 550 -65 0 -65 0 0 -550z"/>
@@ -699,22 +699,22 @@ function injectScript() {
 </svg>
   `;
   const TWITCH_CHAT_ICON = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 21" fill="currentColor" style="vertical-align: baseline;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 21" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
     <path d="M 5.8730469 2 C 5.5530469 2 5.2524531 2.1521094 5.0644531 2.4121094 L 2.1914062 6.375 C 2.0674063 6.546 2 6.7518906 2 6.9628906 L 2 19 C 2 19.552 2.448 20 3 20 L 7 20 L 7 22 C 7 22.552 7.448 23 8 23 L 9.5859375 23 C 9.8509375 23 10.104969 22.895031 10.292969 22.707031 L 12.707031 20.292969 C 12.894031 20.104969 13.149062 20 13.414062 20 L 16.585938 20 C 16.850938 20 17.104969 19.895031 17.292969 19.707031 L 21.707031 15.292969 C 21.895031 15.105969 22 14.850938 22 14.585938 L 22 3 C 22 2.448 21.552 2 21 2 L 5.8730469 2 z M 6 4 L 20 4 L 20 13 L 17 16 L 12 16 L 9 19 L 9 16 L 6 16 L 6 4 z M 12 7 C 11.448 7 11 7.448 11 8 L 11 11 C 11 11.552 11.448 12 12 12 C 12.552 12 13 11.552 13 11 L 13 8 C 13 7.448 12.552 7 12 7 z M 17 7 C 16.448 7 16 7.448 16 8 L 16 11 C 16 11.552 16.448 12 17 12 C 17.552 12 18 11.552 18 11 L 18 8 C 18 7.448 17.552 7 17 7 z"/>
 </svg>
   `;
   const YOUTUBE_CHAT_ICON = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 4 26 22" fill="currentColor" style="vertical-align: baseline;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 4 26 22" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
     <path d="M 15 4 C 10.814 4 5.3808594 5.0488281 5.3808594 5.0488281 L 5.3671875 5.0644531 C 3.4606632 5.3693645 2 7.0076245 2 9 L 2 15 L 2 15.001953 L 2 21 L 2 21.001953 A 4 4 0 0 0 5.3769531 24.945312 L 5.3808594 24.951172 C 5.3808594 24.951172 10.814 26.001953 15 26.001953 C 19.186 26.001953 24.619141 24.951172 24.619141 24.951172 L 24.621094 24.949219 A 4 4 0 0 0 28 21.001953 L 28 21 L 28 15.001953 L 28 15 L 28 9 A 4 4 0 0 0 24.623047 5.0546875 L 24.619141 5.0488281 C 24.619141 5.0488281 19.186 4 15 4 z M 12 10.398438 L 20 15 L 12 19.601562 L 12 10.398438 z"/>
 </svg>
   `;
   const RUMBLE_CHAT_ICON = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="1 0 20 20" fill="currentColor" style="vertical-align: baseline;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="1 0 20 20" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
     <path fill-rule="evenodd" clip-rule="evenodd" d="M13.165 11.292c.843-.617.843-1.809 0-2.442a19.617 19.617 0 00-3.922-2.308 1.624 1.624 0 00-1.419.053 1.54 1.54 0 00-.536.474 1.462 1.462 0 00-.254.656 18.136 18.136 0 00-.13 4.584c.023.233.104.458.234.656s.308.364.518.485a1.614 1.614 0 001.404.1 18.68 18.68 0 004.105-2.25v-.008zm6.304-4.5a4.617 4.617 0 011.393 3.276 4.614 4.614 0 01-1.376 3.282c-3.23 3.241-7.376 5.509-11.93 6.525a4.859 4.859 0 01-3.422-.425 4.53 4.53 0 01-2.187-2.558C.556 12.559.765 7.659 2.104 3.309A4.491 4.491 0 014.177.66 4.834 4.834 0 017.582.11c4.47.983 8.67 3.5 11.887 6.683z" />
 </svg>
   `;
   const KICK_CHAT_ICON = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 5 20 22" fill="currentColor" style="vertical-align: baseline;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 5 20 22" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
     <polygon fill-rule="evenodd" points="6.18 4.99 13.61 4.99 13.61 9.9 16 9.9 16 7.38 18.52 7.38 18.52 4.99 25.82 4.99 25.82 12.29 23.43 12.29 23.43 14.8 20.91 14.8 20.91 17.2 23.43 17.2 23.43 19.71 25.82 19.71 25.82 27.01 18.52 27.01 18.52 24.62 16 24.62 16 22.1 13.61 22.1 13.61 27.01 6.18 27.01 6.18 4.99"/>
 </svg>
   `;
