@@ -756,7 +756,7 @@ function injectScript() {
 
   const embedChatButtonsContainer = document.createElement('div');
   embedChatButtonsContainer.id = 'embed-chat-btns-container';
-  embedChatButtonsContainer.className += 'float-left';
+  embedChatButtonsContainer.className += 'float-start';
   Object.assign(embedChatButtonsContainer.style, {
     'display': 'flex',
     'flex-direction': 'row',
@@ -952,7 +952,7 @@ function injectScript() {
     window.parent.document.getElementById("refresh").addEventListener("click", deactivateEmbedChat);
 
     // observe any changes to the embedded stream iframe (additions or removals of the iframe or modifications to the 'src' attribute)
-    embeddedStreamObserver.observe(window.parent.document.getElementById('stream-wrap'), {childList: true, attributes: true, attributeFilter: ['src']});
+    embeddedStreamObserver.observe(window.parent.document.getElementById('embed'), {childList: true, attributes: true, attributeFilter: ['src']});
   }
 
   function removeEmbedChatToggleBtn() {
