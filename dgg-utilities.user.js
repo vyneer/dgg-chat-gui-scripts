@@ -820,13 +820,18 @@ function injectScript() {
     const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
     return streamInfo?.streams?.youtube?.id;
   }
+  // Copium
+  function getTwitchLiveId() {
+    const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
+    return streamInfo?.streams?.twitch?.id;
+  }
   function getRumbleLiveId() {
     const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
     return streamInfo?.streams?.rumble?.id;
   }
 
   function getTwitchChatURL() {
-    const twitchEmbedId = getTwitchEmbedId() || getTwitchHostId();
+    const twitchEmbedId = getTwitchEmbedId() || getTwitchLiveId() || getTwitchHostId();
     return twitchEmbedId ? `https://www.twitch.tv/embed/${twitchEmbedId}/chat?parent=www.destiny.gg&darkpopout` : null;
   }
   function getYoutubeChatURL() {
