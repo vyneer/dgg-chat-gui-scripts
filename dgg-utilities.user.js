@@ -958,6 +958,12 @@ function injectScript() {
 
     // observe any changes to the embedded stream iframe (additions or removals of the iframe or modifications to the 'src' attribute)
     embeddedStreamObserver.observe(window.parent.document.getElementById('embed'), {childList: true, attributes: true, attributeFilter: ['src']});
+    // listen for any storage change events, particularly to the two localStorage keys which indicate the currently lives tream or hosted stream
+    window.addEventListener("storage", (event) => {
+      if (event.key === STORAGE_STREAM_INFO_KEY || event.key === STORAGE_HOST_INFO_KEY) {
+        updateEmbedChatButtons();
+      }
+    });
   }
 
   function removeEmbedChatToggleBtn() {
