@@ -2321,12 +2321,8 @@ function injectScript() {
       let resultNukes;
       let result;
 
-      // exclude whispers sent using slash commands 
-      if(text.startsWith("/w ") || text.startsWith("/whisper ")){
-        return false;
-      }
-      // exclude if the main chat window is inactive
-      if(!$('#chat-windows-select span[title="Destiny GG"].active').length){
+      // exclude whispers sent using slash commands or when the main chatbox is inactive
+      if(text.startsWith("/w ") || text.startsWith("/whisper ") || !$('#chat-windows-select span[title="Destiny GG"].active').length){
         return false;
       }
 
