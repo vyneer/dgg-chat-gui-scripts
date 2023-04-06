@@ -2319,17 +2319,32 @@ function injectScript() {
   const windowObserver = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
       if (mutation.type === 'childList') {
-        if (document.querySelector("#chat-windows-select span[title=\"Destiny GG\"].active")) {
+        mutation.addedNodes.forEach(node => {
+          if (node.classList.contains('win-main')) {
+            dggIsActive = node.classList.contains('active');
+            if (!dggIsActive) {
+              foundPhraseOrNuke = false;
+              if (textarea.style.backgroundColor != "") {
+                textarea.style.backgroundColor = "";
+              }
+              if (config.preventEnter) {
+                sendAnywayButton.style.display = "none";
+              }
+            }
+          }
+        })
+      } else {
+        if (mutation.target.style.display == 'none') {
           dggIsActive = true;
-        } else {
-          dggIsActive = false;
         }
       }
+      textScanner({});
     }
   });
 
   windowObserver.observe(chatwindowselector, { 
-    childList: true 
+    childList: true,
+    attributes: true,
   });
 
   function textScanner(event) {
@@ -2343,7 +2358,7 @@ function injectScript() {
       let result;
 
       // exclude whispers sent using slash commands or when the main chat window is inactive
-      if (text.startsWith("/w ") || text.startsWith("/whisper ") || !dggIsActive) {
+      if (text.startsWith("/w ") || text.startsWith("/whisper ") || text.startsWith("/msg ") || text.startsWith ("/message ") || text.startsWith("/notify ") || text.startsWith("/tell ")|| !dggIsActive) {
         return false;
       }
 
