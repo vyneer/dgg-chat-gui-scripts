@@ -2310,11 +2310,12 @@ function injectScript() {
   }
 
   getPhrases();
-  
+ 
   function textScanner(event) {
     // ensure we dont fire on random empty keypresses
     if (!(event.code == "ControlLeft" || event.code == "ControlRight" || event.code == "AltLeft" || event.code == "AltRight" || event.code == "ShiftLeft" || event.code == "ShiftRight" || event.code == "MetaLeft" || event.code == "MetaRight")) {
       let text = textarea.value.toLowerCase();
+      let chatwindow = document.querySelector("#chat-windows-select span[title=\"Destiny GG\"].active")
       let resultCustom;
       let resultCustomSoft;
       let resultLinks;
@@ -2322,7 +2323,7 @@ function injectScript() {
       let result;
 
       // exclude whispers sent using slash commands or when the main chatbox is inactive
-      if (text.startsWith("/w ") || text.startsWith("/whisper ") || !$('#chat-windows-select span[title="Destiny GG"].active').length){
+      if (text.startsWith("/w ") || text.startsWith("/whisper ") || !chatwindow) {
         return false;
       }
 
