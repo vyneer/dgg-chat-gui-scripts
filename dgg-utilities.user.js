@@ -2310,20 +2310,40 @@ function injectScript() {
   }
 
   getPhrases();
- 
+  
+  // when no whisper tabs are opened, the chat window selector has no children
+  const chatwindowselector = document.querySelector("#chat-windows-select");
+  let dggIsActive = true;
+  
+  // create an observer that will fire when the chat window selector is updated
+  const windowObserver = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      if (mutation.type === 'childList') {
+        if (document.querySelector("#chat-windows-select span[title=\"Destiny GG\"].active")) {
+          dggIsActive = true;
+        } else {
+          dggIsActive = false;
+        }
+      }
+    }
+  });
+
+  windowObserver.observe(chatwindowselector, { 
+    childList: true 
+  });
+
   function textScanner(event) {
     // ensure we dont fire on random empty keypresses
     if (!(event.code == "ControlLeft" || event.code == "ControlRight" || event.code == "AltLeft" || event.code == "AltRight" || event.code == "ShiftLeft" || event.code == "ShiftRight" || event.code == "MetaLeft" || event.code == "MetaRight")) {
       let text = textarea.value.toLowerCase();
-      let chatwindow = document.querySelector("#chat-windows-select span[title=\"Destiny GG\"].active")
       let resultCustom;
       let resultCustomSoft;
       let resultLinks;
       let resultNukes;
       let result;
 
-      // exclude whispers sent using slash commands or when the main chatbox is inactive
-      if (text.startsWith("/w ") || text.startsWith("/whisper ") || !chatwindow) {
+      // exclude whispers sent using slash commands or when the main chat window is inactive
+      if (text.startsWith("/w ") || text.startsWith("/whisper ") || !dggIsActive) {
         return false;
       }
 
