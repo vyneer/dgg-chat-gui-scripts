@@ -2395,6 +2395,42 @@ function injectScript() {
 
   getPhrases();
   
+  // when no whisper tabs are opened, the chat window selector has no children
+  const chatwindowselector = document.querySelector("#chat-windows-select");
+  let dggIsActive = true;
+  
+  // create an observer that will fire when the chat window selector is updated
+  const windowObserver = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach(node => {
+          if (node.classList.contains('win-main')) {
+            dggIsActive = node.classList.contains('active');
+            if (!dggIsActive) {
+              foundPhraseOrNuke = false;
+              if (textarea.style.backgroundColor != "") {
+                textarea.style.backgroundColor = "";
+              }
+              if (config.preventEnter) {
+                sendAnywayButton.style.display = "none";
+              }
+            }
+          }
+        })
+      } else {
+        if (mutation.target.style.display == 'none') {
+          dggIsActive = true;
+        }
+      }
+      textScanner({});
+    }
+  });
+
+  windowObserver.observe(chatwindowselector, { 
+    childList: true,
+    attributes: true,
+  });
+
   function textScanner(event) {
     // ensure we dont fire on random empty keypresses
     if (!(event.code == "ControlLeft" || event.code == "ControlRight" || event.code == "AltLeft" || event.code == "AltRight" || event.code == "ShiftLeft" || event.code == "ShiftRight" || event.code == "MetaLeft" || event.code == "MetaRight")) {
@@ -2404,6 +2440,11 @@ function injectScript() {
       let resultLinks;
       let resultNukes;
       let result;
+
+      // exclude whispers sent using slash commands or when the main chat window is inactive
+      if (text.startsWith("/w ") || text.startsWith("/whisper ") || text.startsWith("/msg ") || text.startsWith ("/message ") || text.startsWith("/notify ") || text.startsWith("/tell ")|| !dggIsActive) {
+        return false;
+      }
 
       if (phrases.length > 0) {
         for (let entry of phrases) {
