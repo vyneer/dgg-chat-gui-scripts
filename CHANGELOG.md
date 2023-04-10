@@ -7,12 +7,35 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 
 ## [Unreleased]
 
+- Increased flair check range up to 100 for new flairs (big PepoTurkey to Voiture)
+- Add multi-stream chat embed support (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+- Excluded whispers from phrase detection (big PepoTurkey to Revel)
+
+## [1.7.4] - 2023-02-17
+
+### Added
+
+- Added an option to stick in-line mentions to top of chat (big PepoTurkey to Voiture for the idea (gobl))
+
+### Fixed
+
+- The script breaking sometimes when "Add button to toggle to the currently embedded video's chat" was on (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+- Chat losing scroll position when "Format YouTube embeds directly in messages according to Utilities settings" formatted an embed
+
+## [1.7.3] - 2023-02-03
+
+### Added
+
 - Added an option to embed a hosted stream's chat, same as embedded stream or live YT chat (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
-- ...
+
+### Fixed
+
+- Settings menu not scrolling
 
 ## [1.7.2] - 2022-12-31
 
 ### Added
+
 - Add an option to update the live pill for Youtube stream with channel name (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
 - Add Rumble embeds
 
