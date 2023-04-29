@@ -1270,6 +1270,11 @@ function injectScript() {
   youtubeEmbedFormatOption5.innerHTML = "#youtube/Debating JonTron";
   youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption5);
 
+  let youtubeEmbedFormatOption6 = document.createElement("option");
+  youtubeEmbedFormatOption6.value = 6;
+  youtubeEmbedFormatOption6.innerHTML = "#youtube/Destiny (Debating JonTron)";
+  youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption6);
+
   youtubeEmbedFormatSelect.value = config.youtubeEmbedFormat;
   youtubeEmbedFormatSelect.addEventListener("change", () => config.youtubeEmbedFormat = parseInt(youtubeEmbedFormatSelect.value));
 
@@ -1512,6 +1517,9 @@ function injectScript() {
                             break;
                           case 5:
                             embedNode.text = `${platform}/${title}`;
+                            break;
+                          case 6:
+                            embedNode.text = `${platform}/${channel} (${title})`;
                             break;
                         }
                         if (window.getComputedStyle(scrollnotify).bottom != "0px") {
@@ -2152,6 +2160,20 @@ function injectScript() {
                 '">$3/' +
                 title +
                 '</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 6:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$3/' +
+                channel +
+                ' (' +
+                title +
+                ')</a> <a class="externallink bookmarklink" href="' +
                 source +
                 '" target ="_blank">(source)</a>';
               break;
