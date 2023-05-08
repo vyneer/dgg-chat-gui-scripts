@@ -71,6 +71,8 @@ const DEBUG_LINKS_DATA = [
   },
 ];
 
+const scriptVersion = GM_info.script.version.includes('dev-') ? 'dev' : '';
+
 const timeOptions = {
   hour12: false,
   hour: "2-digit",
@@ -258,7 +260,6 @@ function injectScript() {
 
     #util-settings h4 {
         font-size: 0.9em;
-        margin-top: 1.8em;
         margin-bottom: .9em;
         padding-left: .9em;
         color: #494949;
@@ -295,6 +296,20 @@ function injectScript() {
         padding: .3em;
         width: 100%
     }
+
+    #util-update-group {
+      display: flex;
+      justify-content: center;
+    }
+
+    #util-update-group a {
+      width: 75%;
+      text-align: center;
+    }
+
+    #util-update-group a.no-link:hover {
+      text-decoration: none;
+    }
   `
   utilSettingsStyle.innerHTML = utilSettingsStyleString;
   utilSettingsStyle.id = "utilSettingsStyle";
@@ -325,6 +340,35 @@ function injectScript() {
   alertAnimationStyle.innerHTML = keyFrames;
   document.head.appendChild(alertAnimationStyle);
 
+  const updateCheck = (cb) => {
+    GM.xmlHttpRequest({
+      method: "GET",
+      url: `https://vyneer.me/tools/script/${scriptVersion}`,
+      onload: (response) => {
+        if (response.status == 200) {
+          let data = JSON.parse(response.response);
+          if ("link" in data && "version" in data) {
+            if (GM_info.script.version < data.version) {
+              cb(data);
+            } else {
+              cb(undefined);
+            }
+          } else {
+            cb(undefined);
+          }
+        } else {
+          console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP status code: ${response.status} - ${response.statusText}`);
+        }
+      },
+      onerror: () => {
+        console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP error`);
+      },
+      ontimeout: () => {
+        console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP timeout`);
+      }
+    });
+  }
+
   // make an observer to show an update message after the "connected" alert in chat
   let updateObserver = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
@@ -338,33 +382,17 @@ function injectScript() {
             // checking the scripts version
             // we check the difference between the current install's version and the API
             // if the API shows there's an update, show a message
-            GM.xmlHttpRequest({
-              method: "GET",
-              url: "https://vyneer.me/tools/script/dev",
-              onload: (response) => {
-                if (response.status == 200) {
-                  let data = JSON.parse(response.response);
-                  if ("link" in data && "version" in data) {
-                    if (GM_info.script.version < data.version) {
-                      new DGGMsg(
-                        `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
-                        "msg-info msg-historical",
-                        ""
-                      );
-                      chatlines.scrollTop = chatlines.scrollHeight;
-                    }
-                  }
-                } else {
-                  console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP status code: ${response.status} - ${response.statusText}`);
-                }
-              },
-              onerror: () => {
-                console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP error`);
-              },
-              ontimeout: () => {
-                console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP timeout`);
+            const updateDataFunc = (data) => {
+              if (data) {
+                new DGGMsg(
+                  `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
+                  "msg-info msg-historical",
+                  ""
+                );
+                chatlines.scrollTop = chatlines.scrollHeight;
               }
-            });
+            };
+            updateCheck(updateDataFunc);
 
             // show embeds on launch
             if (config.embedsOnLaunch) {
@@ -609,6 +637,40 @@ function injectScript() {
   settingsArea.id = "util-settings-form";
   nanoContent.appendChild(settingsArea);
   utilSettings.appendChild(settingsAreaOuter);
+
+  // making an update check wrapper
+  let updateCheckGroup = document.createElement("div");
+  updateCheckGroup.id = 'util-update-group';
+  const updateCheckText = document.createElement('a');
+  updateCheckText.role = "button";
+  updateCheckText.textContent = "Check for updates";
+  updateCheckGroup.append(updateCheckText);
+  const updateDataFunc = (data) => {
+    if (data) {
+      updateCheckText.href = data.link;
+      updateCheckText.target = '_blank';
+      updateCheckText.textContent = `New version found (${data.version}), click to update`;
+      updateCheckText.style.color = 'fuchsia';
+      updateCheckText.removeEventListener("click", updateClickFunc);
+    } else {
+      updateCheckText.textContent = 'No updates found :)';
+      updateCheckText.classList.toggle('no-link', true);
+      updateCheckText.style.color = 'green';
+      updateCheckText.removeEventListener("click", updateClickFunc);
+      setTimeout(() => {
+        updateCheckText.textContent = "Check for updates";
+        updateCheckText.classList.toggle('no-link', false);
+        updateCheckText.style.removeProperty('color');
+        updateCheckText.addEventListener("click", updateClickFunc);
+    }, 5000);
+    }
+  };
+  const updateClickFunc = () => {
+    updateCheck(updateDataFunc);
+  };
+  updateCheckText.addEventListener("click", updateClickFunc);
+  settingsArea.appendChild(updateCheckGroup);
+
   let title = document.createElement("h4");
   title.innerHTML = `Utilities General Settings`;
   // appending it to the settings menu
