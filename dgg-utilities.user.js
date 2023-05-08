@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2023.04.10
+// @version      dev-2023.05.08
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -22,6 +22,7 @@
 // * increased flair check range up to 100 for new flairs (big PepoTurkey to Voiture)
 // * add multi-stream chat embed support (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
 // * excluded whispers from phrase detection (big PepoTurkey to Revel)
+// * add channel+title formatting for YouTube embeds (big thanks to [@cantclosevim](https://github.com/cantclosevim) <3)
 // v1.7.4 - 2023-02-17
 // * added an option to stick in-line mentions to top of chat (big PepoTurkey to Voiture for the idea (gobl))
 // * fixed the whole script breaking sometimes when "Add button to toggle to the currently embedded video's chat" was on (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
