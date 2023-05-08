@@ -333,7 +333,7 @@ function injectScript() {
           if (
             node
               .querySelector('span[class="text"]')
-              .innerHTML.includes("Connected.")
+              .innerHTML.includes("Connected")
           ) {
             // checking the scripts version
             // we check the difference between the current install's version and the API
