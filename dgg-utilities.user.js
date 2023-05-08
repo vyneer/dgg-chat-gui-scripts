@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2023.05.08
+// @version      dev-2023.05.09
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -23,6 +23,7 @@
 // * add multi-stream chat embed support (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
 // * excluded whispers from phrase detection (big PepoTurkey to Revel)
 // * add channel+title formatting for YouTube embeds (big thanks to [@cantclosevim](https://github.com/cantclosevim) <3)
+// * add Rumble embed formatting
 // v1.7.4 - 2023-02-17
 // * added an option to stick in-line mentions to top of chat (big PepoTurkey to Voiture for the idea (gobl))
 // * fixed the whole script breaking sometimes when "Add button to toggle to the currently embedded video's chat" was on (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
@@ -129,6 +130,7 @@ const configItems = {
   embedTime         : new ConfigItem("embedTime",          30      ),
   twitchEmbedFormat : new ConfigItem("twitchEmbedFormat",  1       ),
   youtubeEmbedFormat: new ConfigItem("youtubeEmbedFormat", 1       ),
+  rumbleEmbedFormat : new ConfigItem("rumbleEmbedFormat",  1       ),
   colorOnMutelinks  : new ConfigItem("colorOnMutelinks",   false   ),
   phraseColor       : new ConfigItem("phraseColor",        "1f0000"),
   nukeColor         : new ConfigItem("nukeColor",          "1f1500"),
@@ -1343,6 +1345,55 @@ function injectScript() {
 
   youtubeEmbedFormatGroup.appendChild(youtubeEmbedFormatSelect);
 
+  // creating a rumble embed formatting setting
+  let rumbleEmbedFormatGroup = document.createElement("div");
+  rumbleEmbedFormatGroup.className = "form-group";
+  let rumbleEmbedFormatLabel = document.createElement("label");
+  rumbleEmbedFormatLabel.innerHTML = "Rumble Embed Formatting";
+  rumbleEmbedFormatLabel.title = "Select how to format the Rumble embeds";
+  rumbleEmbedFormatLabel.htmlFor = "embedFormatSelect";
+  rumbleEmbedFormatGroup.appendChild(rumbleEmbedFormatLabel);
+  let rumbleEmbedFormatSelect = document.createElement("select");
+  rumbleEmbedFormatSelect.id = "embedFormatSelect";
+  rumbleEmbedFormatSelect.name = "embedFormatSelect";
+  rumbleEmbedFormatSelect.className = "form-control";
+
+  let rumbleEmbedFormatOption1 = document.createElement("option");
+  rumbleEmbedFormatOption1.value = 1;
+  rumbleEmbedFormatOption1.innerHTML = "#rumble/v2hlgvk";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption1);
+
+  let rumbleEmbedFormatOption2 = document.createElement("option");
+  rumbleEmbedFormatOption2.value = 2;
+  rumbleEmbedFormatOption2.innerHTML = "#rumble/v2hlgvk (Destiny)";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption2);
+
+  let rumbleEmbedFormatOption3 = document.createElement("option");
+  rumbleEmbedFormatOption3.value = 3;
+  rumbleEmbedFormatOption3.innerHTML =
+    "#rumble/v2hlgvk (Streamin' and memein' today)";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption3);
+
+  let rumbleEmbedFormatOption4 = document.createElement("option");
+  rumbleEmbedFormatOption4.value = 4;
+  rumbleEmbedFormatOption4.innerHTML = "#rumble/Destiny";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption4);
+
+  let rumbleEmbedFormatOption5 = document.createElement("option");
+  rumbleEmbedFormatOption5.value = 5;
+  rumbleEmbedFormatOption5.innerHTML = "#rumble/Streamin' and memein' today";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption5);
+
+  let rumbleEmbedFormatOption6 = document.createElement("option");
+  rumbleEmbedFormatOption6.value = 6;
+  rumbleEmbedFormatOption6.innerHTML = "#rumble/Destiny (Streamin' and memein' today)";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption6);
+
+  rumbleEmbedFormatSelect.value = config.rumbleEmbedFormat;
+  rumbleEmbedFormatSelect.addEventListener("change", () => config.rumbleEmbedFormat = parseInt(rumbleEmbedFormatSelect.value));
+
+  rumbleEmbedFormatGroup.appendChild(rumbleEmbedFormatSelect);
+
   // creating an phrase textarea color setting
   let phraseColorGroup = document.createElement("div");
   phraseColorGroup.className = "form-group row";
@@ -1550,7 +1601,7 @@ function injectScript() {
 
   // make an observer that checks for embeds
   let embedObserver = new MutationObserver((mutations) => {
-    if (config.youtubeEmbedFormat != 1 && mutations.length < 3) {
+    if ((config.youtubeEmbedFormat != 1 || config.rumbleEmbedFormat != 1) && mutations.length < 3) {
       for (let mutation of mutations) {
         for (let node of mutation.addedNodes) {
           if (node.matches("div.msg-chat.msg-user")) {
@@ -1564,11 +1615,41 @@ function injectScript() {
 
                 switch (platform) {
                   case "#youtube":
-                    getYoutubeStreamMetadata(id, (metadata) => {
+                    getStreamMetadata(platform, id, (metadata) => {
                       if ("title" in metadata && "author_name" in metadata) {
                         let title = metadata["title"];
                         let channel = metadata["author_name"];
                         switch (config.youtubeEmbedFormat) {
+                          case 2:
+                            embedNode.text = `${platform}/${id} (${channel})`;
+                            break;
+                          case 3:
+                            embedNode.text = `${platform}/${id} (${title})`;
+                            break;
+                          case 4:
+                            embedNode.text = `${platform}/${channel}`;
+                            break;
+                          case 5:
+                            embedNode.text = `${platform}/${title}`;
+                            break;
+                          case 6:
+                            embedNode.text = `${platform}/${channel} (${title})`;
+                            break;
+                        }
+                        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+                          chatlines.scrollTop = chatlines.scrollHeight;
+                        } else {
+                          chatlines.scrollLeft = chatlines.scrollWidth;
+                        }
+                      }
+                    });
+                    break;
+                  case "#rumble":
+                    getStreamMetadata(platform, id, (metadata) => {
+                      if ("title" in metadata && "author_name" in metadata) {
+                        let title = metadata["title"];
+                        let channel = metadata["author_name"];
+                        switch (config.rumbleEmbedFormat) {
                           case 2:
                             embedNode.text = `${platform}/${id} (${channel})`;
                             break;
@@ -1601,12 +1682,12 @@ function injectScript() {
     }
   });
 
-  // creating an edit embeds setting
+  // creating an edit youtube and rumble embeds setting
   let editEmbedsGroup = document.createElement("div");
   editEmbedsGroup.className = "form-group checkbox";
   let editEmbedsLabel = document.createElement("label");
   editEmbedsLabel.innerHTML =
-    "Format YouTube embeds directly in messages according to Utilities settings";
+    "Format YouTube and Rumble embeds directly in messages according to Utilities settings";
   editEmbedsGroup.appendChild(editEmbedsLabel);
   let editEmbedsCheck = document.createElement("input");
   editEmbedsCheck.name = "editEmbeds";
@@ -1632,11 +1713,12 @@ function injectScript() {
   editEmbedsLabel.prepend(editEmbedsCheck);
 
   // make an observer that checks for live pill changing from embeds
-  let replaceYoutubePillName = () => {
-    let embedMatch = window.parent.location.hash.match(/^#youtube\/(.*)$/);
+  let replacePillName = () => {
+    let embedMatch = window.parent.location.hash.match(/^(#youtube|#rumble)\/(.*)$/);
     if (embedMatch) {
-      let embedId = embedMatch[1];
-      getYoutubeStreamMetadata(embedId, (metadata) => {
+      let platform = embedMatch[1];
+      let embedId = embedMatch[2];
+      getStreamMetadata(platform, embedId, (metadata) => {
         if ('author_name' in metadata) {
           let channel = metadata['author_name'];
 
@@ -1650,7 +1732,7 @@ function injectScript() {
     for (let mutation of mutations) {
       for (let node of mutation.addedNodes) {
         if (livePill != undefined) {
-          replaceYoutubePillName();
+          replacePillName();
         }
       }
     }
@@ -1664,7 +1746,7 @@ function injectScript() {
   let editEmbedPillGroup = document.createElement("div");
   editEmbedPillGroup.className = "form-group checkbox";
   let editEmbedPillLabel = document.createElement("label");
-  editEmbedPillLabel.innerHTML = "Replace a YouTube embed's stream ID with the channel name in the live pill";
+  editEmbedPillLabel.innerHTML = "Replace a YouTube and Rumble embed's ID with the channel name in the live pill";
   editEmbedPillGroup.appendChild(editEmbedPillLabel);
   let editEmbedPillCheck = document.createElement("input");
   editEmbedPillCheck.name = "editEmbedPill";
@@ -1681,7 +1763,7 @@ function injectScript() {
     }
   });
   if (config.editEmbedPill && livePill != undefined) {
-    replaceYoutubePillName();
+    replacePillName();
     pillObserver.observe(livePill, {
       childList: true
     });
@@ -2016,6 +2098,7 @@ function injectScript() {
   settingsArea.appendChild(embedTimeGroup);
   settingsArea.appendChild(twitchEmbedFormatGroup);
   settingsArea.appendChild(youtubeEmbedFormatGroup);
+  settingsArea.appendChild(rumbleEmbedFormatGroup);
   let phrasesTitle = document.createElement("h4");
   phrasesTitle.innerHTML = "Utilities Phrases Settings";
   settingsArea.appendChild(phrasesTitle);
@@ -2254,14 +2337,80 @@ function injectScript() {
           break;
         case "#rumble":
           source = "https://rumble.com/embed/" + str.split("/")[1];
-          replacerString =
-            '$1<a class="externallink bookmarklink" href="' +
-            this.url +
-            '$2" target="' +
-            target +
-            '">$2</a> <a class="externallink bookmarklink" href="' +
-            source +
-            '" target ="_blank">(source)</a>';
+          switch (config.rumbleEmbedFormat) {
+            case 2:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$2 (' +
+                channel +
+                ')</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 3:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$2 (' +
+                title +
+                ')</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 4:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$3/' +
+                channel +
+                '</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 5:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$3/' +
+                title +
+                '</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 6:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$3/' +
+                channel +
+                ' (' +
+                title +
+                ')</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            default:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$2</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+          }
           break;
         case "strims.gg":
         case "strims.gg/angelthump":
@@ -3002,10 +3151,21 @@ function injectScript() {
 
   // helper function to query youtube with a stream id to get metadata about that stream, including the stream's title and the channel's name
   // the metadata is passed into the given callback function
-  function getYoutubeStreamMetadata(youTubeStreamId, callback) {
+  function getStreamMetadata(platform, videoID, callback) {
+    let url;
+    switch (platform) {
+      case "#youtube":
+        url = `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${videoID}`;
+        break;
+      case "#rumble":
+        url = `https://rumble.com/api/Media/oembed?format=json&url=https://rumble.com/embed/${videoID}`;
+        break;
+      default:
+        return;
+    }
     GM.xmlHttpRequest({
       method: 'GET',
-      url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${youTubeStreamId}`,
+      url: url,
       onload: (response) => {
         if (errorAlert.style.display == "") {
           errorAlert.style.display = "none";
