@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.7.4
+// @version      1.8
 // @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -9,6 +9,7 @@
 // @run-at       document-start
 // @allFrames    true
 // @grant        GM.xmlHttpRequest
+// @grant        GM.registerMenuCommand
 // @connect      vyneer.me
 // @connect      mitchdev.net
 // @connect      youtube.com
@@ -18,6 +19,15 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.8 - 2023-06-17
+// * increased flair check range up to 100 for new flairs (big PepoTurkey to Voiture)
+// * add multi-stream chat embed support (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+// * excluded whispers from phrase detection (big PepoTurkey to Revel)
+// * add channel+title formatting for YouTube embeds (big thanks to [@cantclosevim](https://github.com/cantclosevim) <3)
+// * add Rumble embed formatting
+// * add Kick embeds
+// * fix broken connection detection
+// * add a manual update button
 // v1.7.4 - 2023-02-17
 // * added an option to stick in-line mentions to top of chat (big PepoTurkey to Voiture for the idea (gobl))
 // * fixed the whole script breaking sometimes when "Add button to toggle to the currently embedded video's chat" was on (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
@@ -30,18 +40,6 @@
 // * add Rumble embeds
 // v1.7.1 - 2022-10-10
 // * remove the violentmonkey workaround
-// v1.7 - 2022-10-07
-// * move all the settings into a custom menu
-// * speedup banned phrase detection
-// * better mutelinks mode support (now detects SOME links in your messages!)
-// * message gets scanned on context menu paste now as well
-// * add a feature to show destiny's last vod on embed check
-// * slight sticky mentions visibility improvement
-// * script should work on strims.gg now
-// * new svg icon
-// * focus the chat input after double clicking a username to copy to input (big thanks to @mattroseman <3)
-// * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
-// * switch to the timestamp update model (might be buggy, but hopefully not)
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
@@ -65,6 +63,8 @@ const DEBUG_LINKS_DATA = [
     status: "on",
   },
 ];
+
+const scriptVersion = GM_info.script.version.includes('dev-') ? 'dev' : '';
 
 const timeOptions = {
   hour12: false,
@@ -103,6 +103,44 @@ let nukesTimestamp = 0;
 let mutelinksTimestamp = 0;
 let phrasesTimestamp = 0;
 
+const updateCheck = (cb) => {
+  GM.xmlHttpRequest({
+    method: "GET",
+    url: `https://vyneer.me/tools/script/${scriptVersion}`,
+    onload: (response) => {
+      if (response.status == 200) {
+        let data = JSON.parse(response.response);
+        if ("link" in data && "version" in data) {
+          if (GM_info.script.version < data.version) {
+            cb(data);
+          } else {
+            cb(undefined);
+          }
+        } else {
+          cb(undefined);
+        }
+      } else {
+        console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP status code: ${response.status} - ${response.statusText}`);
+      }
+    },
+    onerror: () => {
+      console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP error`);
+    },
+    ontimeout: () => {
+      console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP timeout`);
+    }
+  });
+}
+
+const gmUpdateDataFunc = (data) => {
+  if (data) {
+    window.open(data.link, '_blank').focus();
+  }
+};
+GM.registerMenuCommand("Check for updates", () => {
+  updateCheck(gmUpdateDataFunc)
+});
+
 class ConfigItem {
   constructor(keyName, defaultValue) {
     this.keyName = keyName;
@@ -122,6 +160,7 @@ const configItems = {
   embedTime         : new ConfigItem("embedTime",          30      ),
   twitchEmbedFormat : new ConfigItem("twitchEmbedFormat",  1       ),
   youtubeEmbedFormat: new ConfigItem("youtubeEmbedFormat", 1       ),
+  rumbleEmbedFormat : new ConfigItem("rumbleEmbedFormat",  1       ),
   colorOnMutelinks  : new ConfigItem("colorOnMutelinks",   false   ),
   phraseColor       : new ConfigItem("phraseColor",        "1f0000"),
   nukeColor         : new ConfigItem("nukeColor",          "1f1500"),
@@ -253,7 +292,6 @@ function injectScript() {
 
     #util-settings h4 {
         font-size: 0.9em;
-        margin-top: 1.8em;
         margin-bottom: .9em;
         padding-left: .9em;
         color: #494949;
@@ -289,6 +327,20 @@ function injectScript() {
         border-radius: .25em;
         padding: .3em;
         width: 100%
+    }
+
+    #util-update-group {
+      display: flex;
+      justify-content: center;
+    }
+
+    #util-update-group a {
+      width: 75%;
+      text-align: center;
+    }
+
+    #util-update-group a.no-link:hover {
+      text-decoration: none;
     }
   `
   utilSettingsStyle.innerHTML = utilSettingsStyleString;
@@ -328,38 +380,22 @@ function injectScript() {
           if (
             node
               .querySelector('span[class="text"]')
-              .innerHTML.includes("Connected.")
+              .innerHTML.includes("Connected")
           ) {
             // checking the scripts version
             // we check the difference between the current install's version and the API
             // if the API shows there's an update, show a message
-            GM.xmlHttpRequest({
-              method: "GET",
-              url: "https://vyneer.me/tools/script",
-              onload: (response) => {
-                if (response.status == 200) {
-                  let data = JSON.parse(response.response);
-                  if ("link" in data && "version" in data) {
-                    if (GM_info.script.version < data.version) {
-                      new DGGMsg(
-                        `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
-                        "msg-info msg-historical",
-                        ""
-                      );
-                      chatlines.scrollTop = chatlines.scrollHeight;
-                    }
-                  }
-                } else {
-                  console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP status code: ${response.status} - ${response.statusText}`);
-                }
-              },
-              onerror: () => {
-                console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP error`);
-              },
-              ontimeout: () => {
-                console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP timeout`);
+            const updateDataFunc = (data) => {
+              if (data) {
+                new DGGMsg(
+                  `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
+                  "msg-info msg-historical",
+                  ""
+                );
+                chatlines.scrollTop = chatlines.scrollHeight;
               }
-            });
+            };
+            updateCheck(updateDataFunc);
 
             // show embeds on launch
             if (config.embedsOnLaunch) {
@@ -604,6 +640,40 @@ function injectScript() {
   settingsArea.id = "util-settings-form";
   nanoContent.appendChild(settingsArea);
   utilSettings.appendChild(settingsAreaOuter);
+
+  // making an update check wrapper
+  let updateCheckGroup = document.createElement("div");
+  updateCheckGroup.id = 'util-update-group';
+  const updateCheckText = document.createElement('a');
+  updateCheckText.role = "button";
+  updateCheckText.textContent = "Check for updates";
+  updateCheckGroup.append(updateCheckText);
+  const updateDataFunc = (data) => {
+    if (data) {
+      updateCheckText.href = data.link;
+      updateCheckText.target = '_blank';
+      updateCheckText.textContent = `New version found (${data.version}), click to update`;
+      updateCheckText.style.color = 'fuchsia';
+      updateCheckText.removeEventListener("click", updateClickFunc);
+    } else {
+      updateCheckText.textContent = 'No updates found :)';
+      updateCheckText.classList.toggle('no-link', true);
+      updateCheckText.style.color = 'green';
+      updateCheckText.removeEventListener("click", updateClickFunc);
+      setTimeout(() => {
+        updateCheckText.textContent = "Check for updates";
+        updateCheckText.classList.toggle('no-link', false);
+        updateCheckText.style.removeProperty('color');
+        updateCheckText.addEventListener("click", updateClickFunc);
+    }, 5000);
+    }
+  };
+  const updateClickFunc = () => {
+    updateCheck(updateDataFunc);
+  };
+  updateCheckText.addEventListener("click", updateClickFunc);
+  settingsArea.appendChild(updateCheckGroup);
+
   let title = document.createElement("h4");
   title.innerHTML = `Utilities General Settings`;
   // appending it to the settings menu
@@ -676,91 +746,206 @@ function injectScript() {
   }
   doubleClickCopyLabel.prepend(doubleClickCopyCheck);
 
-  // functions to manage switching between DGG chat and the embedded chat
-  const dggChatToggleLabel = "DGG Chat";
-  const embedChatToggleLabel = "Embed Chat";
-  const ytChatToggleLabel = "Youtube Chat";
-  const hostChatToggleLabel = "Host Chat";
+  // =============================================================
+  // Icons and HTML elements for managing the DGG & embedded chats
+  // =============================================================
+
+  const DGG_CHAT_ICON = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1960 1960" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
+    <g>
+        <path d="M0 980 l0 -980 980 0 980 0 0 980 0 980 -980 0 -980 0 0 -980z m1810 615 l0 -185 -117 0 -116 0 -116 123 c-64 67 -142 150 -175 185 l-59 62 291 0 292 0 0 -185z m-597 -30 l187 -194 0 -402 0 -401 -184 -191 -183 -192 -437 -3 -436 -2 0 790 0 790 433 0 433 0 187 -195z m597 -1230 l0 -185 -292 0 -291 0 24 27 c13 15 91 98 173 185 l150 158 118 0 118 0 0 -185z"/>
+        <path d="M670 980 l0 -550 65 0 65 0 0 550 0 550 -65 0 -65 0 0 -550z"/>
+    </g>
+</svg>
+  `;
+  const TWITCH_CHAT_ICON = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 21" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
+    <path d="M 5.8730469 2 C 5.5530469 2 5.2524531 2.1521094 5.0644531 2.4121094 L 2.1914062 6.375 C 2.0674063 6.546 2 6.7518906 2 6.9628906 L 2 19 C 2 19.552 2.448 20 3 20 L 7 20 L 7 22 C 7 22.552 7.448 23 8 23 L 9.5859375 23 C 9.8509375 23 10.104969 22.895031 10.292969 22.707031 L 12.707031 20.292969 C 12.894031 20.104969 13.149062 20 13.414062 20 L 16.585938 20 C 16.850938 20 17.104969 19.895031 17.292969 19.707031 L 21.707031 15.292969 C 21.895031 15.105969 22 14.850938 22 14.585938 L 22 3 C 22 2.448 21.552 2 21 2 L 5.8730469 2 z M 6 4 L 20 4 L 20 13 L 17 16 L 12 16 L 9 19 L 9 16 L 6 16 L 6 4 z M 12 7 C 11.448 7 11 7.448 11 8 L 11 11 C 11 11.552 11.448 12 12 12 C 12.552 12 13 11.552 13 11 L 13 8 C 13 7.448 12.552 7 12 7 z M 17 7 C 16.448 7 16 7.448 16 8 L 16 11 C 16 11.552 16.448 12 17 12 C 17.552 12 18 11.552 18 11 L 18 8 C 18 7.448 17.552 7 17 7 z"/>
+</svg>
+  `;
+  const YOUTUBE_CHAT_ICON = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 4 26 22" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
+    <path d="M 15 4 C 10.814 4 5.3808594 5.0488281 5.3808594 5.0488281 L 5.3671875 5.0644531 C 3.4606632 5.3693645 2 7.0076245 2 9 L 2 15 L 2 15.001953 L 2 21 L 2 21.001953 A 4 4 0 0 0 5.3769531 24.945312 L 5.3808594 24.951172 C 5.3808594 24.951172 10.814 26.001953 15 26.001953 C 19.186 26.001953 24.619141 24.951172 24.619141 24.951172 L 24.621094 24.949219 A 4 4 0 0 0 28 21.001953 L 28 21 L 28 15.001953 L 28 15 L 28 9 A 4 4 0 0 0 24.623047 5.0546875 L 24.619141 5.0488281 C 24.619141 5.0488281 19.186 4 15 4 z M 12 10.398438 L 20 15 L 12 19.601562 L 12 10.398438 z"/>
+</svg>
+  `;
+  const RUMBLE_CHAT_ICON = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="1 0 20 20" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M13.165 11.292c.843-.617.843-1.809 0-2.442a19.617 19.617 0 00-3.922-2.308 1.624 1.624 0 00-1.419.053 1.54 1.54 0 00-.536.474 1.462 1.462 0 00-.254.656 18.136 18.136 0 00-.13 4.584c.023.233.104.458.234.656s.308.364.518.485a1.614 1.614 0 001.404.1 18.68 18.68 0 004.105-2.25v-.008zm6.304-4.5a4.617 4.617 0 011.393 3.276 4.614 4.614 0 01-1.376 3.282c-3.23 3.241-7.376 5.509-11.93 6.525a4.859 4.859 0 01-3.422-.425 4.53 4.53 0 01-2.187-2.558C.556 12.559.765 7.659 2.104 3.309A4.491 4.491 0 014.177.66 4.834 4.834 0 017.582.11c4.47.983 8.67 3.5 11.887 6.683z" />
+</svg>
+  `;
+  const KICK_CHAT_ICON = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 5 20 22" fill="currentColor" style="vertical-align: baseline; filter: drop-shadow(1px 1px 1px #000)">
+    <polygon fill-rule="evenodd" points="6.18 4.99 13.61 4.99 13.61 9.9 16 9.9 16 7.38 18.52 7.38 18.52 4.99 25.82 4.99 25.82 12.29 23.43 12.29 23.43 14.8 20.91 14.8 20.91 17.2 23.43 17.2 23.43 19.71 25.82 19.71 25.82 27.01 18.52 27.01 18.52 24.62 16 24.62 16 22.1 13.61 22.1 13.61 27.01 6.18 27.01 6.18 4.99"/>
+</svg>
+  `;
+
+  const EMBED_BUTTON_STYLE= {
+    'display': 'flex',
+    'justify-content': 'center',
+    'align-items': 'center',
+
+    'height': '15px',
+    'width': '15px',
+
+    'margin-right': '5px'
+  };
+
+  const dggChatButton = document.createElement('a');
+  dggChatButton.id = 'dgg-chat-btn';
+  dggChatButton.addEventListener('click', handleDGGChatButtonClick);
+  Object.assign(dggChatButton.style, EMBED_BUTTON_STYLE);
+  dggChatButton.innerHTML = DGG_CHAT_ICON;
+
+  const twitchChatButton = document.createElement('a');
+  twitchChatButton.id = 'twitch-chat-btn';
+  twitchChatButton.addEventListener('click', handleTwitchChatButtonClick);
+  Object.assign(twitchChatButton.style, EMBED_BUTTON_STYLE);
+  twitchChatButton.innerHTML = TWITCH_CHAT_ICON;
+
+  const youtubeChatButton = document.createElement('a');
+  youtubeChatButton.id = 'yt-chat-btn';
+  youtubeChatButton.addEventListener('click', handleYoutubeChatButtonClick);
+  Object.assign(youtubeChatButton.style, EMBED_BUTTON_STYLE);
+  youtubeChatButton.innerHTML = YOUTUBE_CHAT_ICON;
+
+  const rumbleChatButton = document.createElement('a');
+  rumbleChatButton.id = 'rumble-chat-btn';
+  rumbleChatButton.addEventListener('click', handleRumbleChatButtonClick);
+  Object.assign(rumbleChatButton.style, EMBED_BUTTON_STYLE);
+  rumbleChatButton.innerHTML = RUMBLE_CHAT_ICON;
+
+  const embedChatButtonsContainer = document.createElement('div');
+  embedChatButtonsContainer.id = 'embed-chat-btns-container';
+  embedChatButtonsContainer.className += 'float-start';
+  Object.assign(embedChatButtonsContainer.style, {
+    'display': 'flex',
+    'flex-direction': 'row',
+    'justify-content': 'center',
+    'align-items': 'center',
+
+    'height': '100%',
+
+    'color': '#444444'
+  });
+  embedChatButtonsContainer.appendChild(dggChatButton);
+  embedChatButtonsContainer.appendChild(twitchChatButton);
+  embedChatButtonsContainer.appendChild(youtubeChatButton);
+  embedChatButtonsContainer.appendChild(rumbleChatButton);
+
+  // =========================================
+  // Functions for managing the embedded chats 
+  // =========================================
+
+  const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
+  const TWITCH_EMBED_RE = /^#twitch\/(.*)$/
+  const RUMBLE_EMBED_RE = /^#rumble\/(.*)$/
+
+  const STORAGE_STREAM_INFO_KEY = "dggApi:streamInfo";
+  const STORAGE_HOST_INFO_KEY = "dggApi:hosting";
+
   let dggChatIFrame;
   if (livePill != undefined) {
     dggChatIFrame = window.parent.document.getElementById("chat-wrap").getElementsByTagName("iframe")[0];
   }
   let embedChatIFrame;
-  let embedChatToggle;
   let embedChatActive = false;
 
-  const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
-  const TWITCH_EMBED_RE = /^#twitch\/(.*)$/
-
-  const STORAGE_STREAM_INFO_KEY = "dggApi:streamInfo";
-  const STORAGE_HOST_INFO_KEY = "dggApi:hosting";
-
-  function isEmbed() {
-    return getYTEmbedChatURL() != null || getTwitchEmbedChatURL() != null;
+  function getYoutubeEmbedId() {
+    const match = YOUTUBE_EMBED_RE.exec(window.parent.location.hash);
+    return match ? match[1] : null;
+  }
+  function getTwitchEmbedId() {
+    const match = TWITCH_EMBED_RE.exec(window.parent.location.hash);
+    return match ? match[1] : null;
+  }
+  function getRumbleEmbedId() {
+    const match = RUMBLE_EMBED_RE.exec(window.parent.location.hash);
+    return match ? match[1] : null
   }
 
-  function isLive() {
-    const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
-
-    return streamInfo && (streamInfo?.streams?.youtube?.live || false);
-  }
-
-  function isHost() {
+  function getYoutubeHostId() {
     const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
-
-    return hostInfo && hostInfo.id != null;
+    return hostInfo?.platform === 'youtube' ? hostInfo.id : null;
+  }
+  function getTwitchHostId() {
+    const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
+    return hostInfo?.platform === 'twitch' ? hostInfo.id : null;
+  }
+  function getRumbleHostId() {
+    const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
+    return hostInfo?.platform === 'rumble' ? hostInfo.id : null;
   }
 
-  function getYTStreamId() {
+  function getYoutubeLiveId() {
     const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
-    return streamInfo.streams.youtube.id;
+    return streamInfo?.streams?.youtube?.id;
+  }
+  // Copium
+  function getTwitchLiveId() {
+    const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
+    return streamInfo?.streams?.twitch?.id;
+  }
+  function getRumbleLiveId() {
+    const streamInfo = JSON.parse(localStorage.getItem(STORAGE_STREAM_INFO_KEY));
+    return streamInfo?.streams?.rumble?.id;
   }
 
-  function getYTLiveChatURL() {
-    if (isLive()) {
-      return `https://www.youtube.com/live_chat?v=${getYTStreamId()}&embed_domain=www.destiny.gg`;
+  function getTwitchChatURL() {
+    const twitchEmbedId = getTwitchEmbedId() || getTwitchLiveId() || getTwitchHostId();
+    return twitchEmbedId ? `https://www.twitch.tv/embed/${twitchEmbedId}/chat?parent=www.destiny.gg&darkpopout` : null;
+  }
+  function getYoutubeChatURL() {
+    // if the user is embedding a video while the stream is live, the embedded id will be favored
+    const youtubeEmbedId = getYoutubeEmbedId() || getYoutubeLiveId() || getYoutubeHostId();
+    return youtubeEmbedId ? `https://www.youtube.com/live_chat?v=${youtubeEmbedId}&embed_domain=www.destiny.gg` : null;
+  }
+  function getRumbleChatURL() {
+    // if the user is embedding a video while the stream is live, the embedded id will be favored
+    let rumbleEmbedId = getRumbleEmbedId() || getRumbleLiveId() || getRumbleHostId();
+    if (!rumbleEmbedId) return null;
+    // remove the 'v' prefix if present, as it's technically not a part of the rumble embed's id
+    if (rumbleEmbedId[0] === 'v') {
+      rumbleEmbedId = rumbleEmbedId.slice(1);
     }
 
-    return null;
+    // a rumble stream's chat id is the base 10 representation of the embed id (which itself is base 36)
+    const chatId = parseInt(rumbleEmbedId, 36);
+    return Number.isInteger(chatId) ?
+      `https://rumble.com/chat/popup/${chatId}` :
+      null;
   }
 
-  function getHostChatURL() {
-    if (isHost()) {
-      const hostInfo = JSON.parse(localStorage.getItem(STORAGE_HOST_INFO_KEY));
+  /**
+   * updateEmbedChatButtons checks to see what's live or embedded, and adds/removes the corresponding embed chat buttons.
+   * Should be called whenever there's an update that could affect what should be embeddable.
+   */
+  function updateEmbedChatButtons() {
+    // dggChatButton.style.display = embedChatActive ? 'flex' : 'none';
+    twitchChatButton.style.display = getTwitchChatURL() ? 'flex' : 'none';
+    youtubeChatButton.style.display = getYoutubeChatURL() ? 'flex' : 'none';
+    rumbleChatButton.style.display = getRumbleChatURL() ? 'flex' : 'none';
+  }
 
-      switch(hostInfo.platform) {
-        case 'youtube':
-          return `https://www.youtube.com/live_chat?v=${hostInfo.id}&embed_domain=www.destiny.gg`;
-        case 'twitch':
-          return `https://www.twitch.tv/embed/${hostInfo.id}/chat?parent=www.destiny.gg&darkpopout`;
+  // observer which responds to changes to the embedded stream iframe, and triggers an update of the embedded chat buttons
+  const embeddedStreamObserver = new MutationObserver((mutations, observer) => {
+    for (const mutation of mutations) {
+      if (
+        Array.from(mutation.addedNodes.values()).some(elem => elem.nodeName === 'IFRAME') ||
+        Array.from(mutation.removedNodes.values()).some(elem => elem.nodeName === 'IFRAME') ||
+        mutation.attributeName === 'src'
+      ) {
+        updateEmbedChatButtons();
       }
     }
-  }
+  });
 
-  function getYTEmbedChatURL() {
-    const match = YOUTUBE_EMBED_RE.exec(window.parent.location.hash);
-    return match ?
-      `https://www.youtube.com/live_chat?v=${match[1]}&embed_domain=www.destiny.gg` :
-      null;
-  }
+  function deactivateEmbedChat() {
+    embedChatActive = false;
 
-  function getTwitchEmbedChatURL() {
-    const match = TWITCH_EMBED_RE.exec(window.parent.location.hash);
-    return match ?
-      `https://www.twitch.tv/embed/${match[1]}/chat?parent=www.destiny.gg&darkpopout` :
-      null;
-  }
+    embedChatIFrame.style.display = "none";
+    dggChatIFrame.style.display = "block";
 
-  function getEmbedChatToggleButtonText() {
-    if (isEmbed()) {
-      return embedChatToggleLabel;
-    } else if (isLive()) {
-      return ytChatToggleLabel;
-    } else if (isHost()) {
-      return hostChatToggleLabel;
-    }
-
-    return embedChatToggleLabel;
+    updateEmbedChatButtons();
   }
 
   function activateEmbedChat(embedChatURL) {
@@ -774,48 +959,34 @@ function injectScript() {
     dggChatIFrame.style.display = "none";
     embedChatIFrame.style.display = "block";
 
-    embedChatToggle.innerHTML = dggChatToggleLabel;
+    updateEmbedChatButtons();
   }
 
-  function deactivateEmbedChat() {
-    embedChatActive = false;
-
-    embedChatIFrame.style.display = "none";
-    dggChatIFrame.style.display = "block";
-
-    embedChatToggle.innerHTML = getEmbedChatToggleButtonText();
+  function handleDGGChatButtonClick() {
+    deactivateEmbedChat();
   }
-
-  function toggleEmbedChat() {
-    if (embedChatActive) {
-      deactivateEmbedChat();
-      return;
-    }
-
-    const ytEmbedChatURL = getYTEmbedChatURL();
-    if (ytEmbedChatURL) {
-      activateEmbedChat(ytEmbedChatURL);
-      return;
-    }
-
-    const twitchEmbedChatURL = getTwitchEmbedChatURL();
-    if (twitchEmbedChatURL) {
-      activateEmbedChat(twitchEmbedChatURL);
-      return;
-    }
-
-    const ytLiveChatURL = getYTLiveChatURL();
-    if (ytLiveChatURL) {
-      activateEmbedChat(ytLiveChatURL);
-      return;
-    }
-
-    const hostChatURL = getHostChatURL();
-    if (hostChatURL) {
-      activateEmbedChat(hostChatURL);
-      return;
+  function handleTwitchChatButtonClick() {
+    const twitchChatURL = getTwitchChatURL();
+    if (twitchChatURL != null) {
+      activateEmbedChat(twitchChatURL);
     }
   }
+  function handleYoutubeChatButtonClick() {
+    const youtubeChatURL = getYoutubeChatURL();
+    if (youtubeChatURL != null) {
+      activateEmbedChat(youtubeChatURL);
+    }
+  }
+  function handleRumbleChatButtonClick() {
+    const rumbleChatURL = getRumbleChatURL();
+    if (rumbleChatURL != null) {
+      activateEmbedChat(rumbleChatURL);
+    }
+  }
+
+  // =========================================================================================
+  // Logic for the embedded chat settings, and functions for enabling or disabling the feature
+  // =========================================================================================
 
   function addEmbedChatToggleBtn() {
     if (livePill == undefined) {
@@ -833,24 +1004,26 @@ function injectScript() {
     embedChatIFrame.setAttribute("seamless", "seamless");
     dggChatIFrame.parentNode.appendChild(embedChatIFrame);
 
-    // add the link/button for toggling the embedded chat
-    embedChatToggle = document.createElement("a");
-    embedChatToggle.id = "embed-chat-toggle";
-    embedChatToggle.className = "float-left";
-    embedChatToggle.style.width = "100px";
-    embedChatToggle.innerHTML = getEmbedChatToggleButtonText();
-
-    embedChatToggle.addEventListener("click", toggleEmbedChat);
-
     window.parent.document.getElementById("chat-panel-tools").insertBefore(
-      embedChatToggle,
+      embedChatButtonsContainer,
       window.parent.document.getElementById("refresh").nextSibling
     );
+
+    updateEmbedChatButtons();
 
     // The height styling of the DGG chat's input element will be messed up if the DGG chat isn't visible when the chat's iframe is refreshed
     // https://github.com/destinygg/chat-gui/blob/78910027663171870a314cc3ab3c066334b72326/assets/chat/js/chat.js#L889
     // So, show the DGG chat before refreshing the iframe
     window.parent.document.getElementById("refresh").addEventListener("click", deactivateEmbedChat);
+
+    // observe any changes to the embedded stream iframe (additions or removals of the iframe or modifications to the 'src' attribute)
+    embeddedStreamObserver.observe(window.parent.document.getElementById('embed'), {childList: true, attributes: true, attributeFilter: ['src']});
+    // listen for any storage change events, particularly to the two localStorage keys which indicate the currently lives tream or hosted stream
+    window.addEventListener("storage", (event) => {
+      if (event.key === STORAGE_STREAM_INFO_KEY || event.key === STORAGE_HOST_INFO_KEY) {
+        updateEmbedChatButtons();
+      }
+    });
   }
 
   function removeEmbedChatToggleBtn() {
@@ -859,10 +1032,12 @@ function injectScript() {
     }
 
     dggChatIFrame.style.display = "block";
-    window.parent.document.getElementById("embed-chat-toggle").remove();
+    window.parent.document.getElementById("embed-chat-btns-container").remove();
     window.parent.document.getElementById("embed-chat-iframe").remove();
 
     window.parent.document.getElementById("refresh").removeEventListener("click", deactivateEmbedChat);
+
+    embeddedStreamObserver.disconnect();
   }
 
   // create a setting to enable the link to switch the embed chat
@@ -1161,10 +1336,64 @@ function injectScript() {
   youtubeEmbedFormatOption5.innerHTML = "#youtube/Debating JonTron";
   youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption5);
 
+  let youtubeEmbedFormatOption6 = document.createElement("option");
+  youtubeEmbedFormatOption6.value = 6;
+  youtubeEmbedFormatOption6.innerHTML = "#youtube/Destiny (Debating JonTron)";
+  youtubeEmbedFormatSelect.appendChild(youtubeEmbedFormatOption6);
+
   youtubeEmbedFormatSelect.value = config.youtubeEmbedFormat;
   youtubeEmbedFormatSelect.addEventListener("change", () => config.youtubeEmbedFormat = parseInt(youtubeEmbedFormatSelect.value));
 
   youtubeEmbedFormatGroup.appendChild(youtubeEmbedFormatSelect);
+
+  // creating a rumble embed formatting setting
+  let rumbleEmbedFormatGroup = document.createElement("div");
+  rumbleEmbedFormatGroup.className = "form-group";
+  let rumbleEmbedFormatLabel = document.createElement("label");
+  rumbleEmbedFormatLabel.innerHTML = "Rumble Embed Formatting";
+  rumbleEmbedFormatLabel.title = "Select how to format the Rumble embeds";
+  rumbleEmbedFormatLabel.htmlFor = "embedFormatSelect";
+  rumbleEmbedFormatGroup.appendChild(rumbleEmbedFormatLabel);
+  let rumbleEmbedFormatSelect = document.createElement("select");
+  rumbleEmbedFormatSelect.id = "embedFormatSelect";
+  rumbleEmbedFormatSelect.name = "embedFormatSelect";
+  rumbleEmbedFormatSelect.className = "form-control";
+
+  let rumbleEmbedFormatOption1 = document.createElement("option");
+  rumbleEmbedFormatOption1.value = 1;
+  rumbleEmbedFormatOption1.innerHTML = "#rumble/v2hlgvk";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption1);
+
+  let rumbleEmbedFormatOption2 = document.createElement("option");
+  rumbleEmbedFormatOption2.value = 2;
+  rumbleEmbedFormatOption2.innerHTML = "#rumble/v2hlgvk (Destiny)";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption2);
+
+  let rumbleEmbedFormatOption3 = document.createElement("option");
+  rumbleEmbedFormatOption3.value = 3;
+  rumbleEmbedFormatOption3.innerHTML =
+    "#rumble/v2hlgvk (Streamin' and memein' today)";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption3);
+
+  let rumbleEmbedFormatOption4 = document.createElement("option");
+  rumbleEmbedFormatOption4.value = 4;
+  rumbleEmbedFormatOption4.innerHTML = "#rumble/Destiny";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption4);
+
+  let rumbleEmbedFormatOption5 = document.createElement("option");
+  rumbleEmbedFormatOption5.value = 5;
+  rumbleEmbedFormatOption5.innerHTML = "#rumble/Streamin' and memein' today";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption5);
+
+  let rumbleEmbedFormatOption6 = document.createElement("option");
+  rumbleEmbedFormatOption6.value = 6;
+  rumbleEmbedFormatOption6.innerHTML = "#rumble/Destiny (Streamin' and memein' today)";
+  rumbleEmbedFormatSelect.appendChild(rumbleEmbedFormatOption6);
+
+  rumbleEmbedFormatSelect.value = config.rumbleEmbedFormat;
+  rumbleEmbedFormatSelect.addEventListener("change", () => config.rumbleEmbedFormat = parseInt(rumbleEmbedFormatSelect.value));
+
+  rumbleEmbedFormatGroup.appendChild(rumbleEmbedFormatSelect);
 
   // creating an phrase textarea color setting
   let phraseColorGroup = document.createElement("div");
@@ -1373,7 +1602,7 @@ function injectScript() {
 
   // make an observer that checks for embeds
   let embedObserver = new MutationObserver((mutations) => {
-    if (config.youtubeEmbedFormat != 1 && mutations.length < 3) {
+    if ((config.youtubeEmbedFormat != 1 || config.rumbleEmbedFormat != 1) && mutations.length < 3) {
       for (let mutation of mutations) {
         for (let node of mutation.addedNodes) {
           if (node.matches("div.msg-chat.msg-user")) {
@@ -1387,7 +1616,7 @@ function injectScript() {
 
                 switch (platform) {
                   case "#youtube":
-                    getYoutubeStreamMetadata(id, (metadata) => {
+                    getStreamMetadata(platform, id, (metadata) => {
                       if ("title" in metadata && "author_name" in metadata) {
                         let title = metadata["title"];
                         let channel = metadata["author_name"];
@@ -1403,6 +1632,39 @@ function injectScript() {
                             break;
                           case 5:
                             embedNode.text = `${platform}/${title}`;
+                            break;
+                          case 6:
+                            embedNode.text = `${platform}/${channel} (${title})`;
+                            break;
+                        }
+                        if (window.getComputedStyle(scrollnotify).bottom != "0px") {
+                          chatlines.scrollTop = chatlines.scrollHeight;
+                        } else {
+                          chatlines.scrollLeft = chatlines.scrollWidth;
+                        }
+                      }
+                    });
+                    break;
+                  case "#rumble":
+                    getStreamMetadata(platform, id, (metadata) => {
+                      if ("title" in metadata && "author_name" in metadata) {
+                        let title = metadata["title"];
+                        let channel = metadata["author_name"];
+                        switch (config.rumbleEmbedFormat) {
+                          case 2:
+                            embedNode.text = `${platform}/${id} (${channel})`;
+                            break;
+                          case 3:
+                            embedNode.text = `${platform}/${id} (${title})`;
+                            break;
+                          case 4:
+                            embedNode.text = `${platform}/${channel}`;
+                            break;
+                          case 5:
+                            embedNode.text = `${platform}/${title}`;
+                            break;
+                          case 6:
+                            embedNode.text = `${platform}/${channel} (${title})`;
                             break;
                         }
                         if (window.getComputedStyle(scrollnotify).bottom != "0px") {
@@ -1421,12 +1683,12 @@ function injectScript() {
     }
   });
 
-  // creating an edit embeds setting
+  // creating an edit youtube and rumble embeds setting
   let editEmbedsGroup = document.createElement("div");
   editEmbedsGroup.className = "form-group checkbox";
   let editEmbedsLabel = document.createElement("label");
   editEmbedsLabel.innerHTML =
-    "Format YouTube embeds directly in messages according to Utilities settings";
+    "Format YouTube and Rumble embeds directly in messages according to Utilities settings";
   editEmbedsGroup.appendChild(editEmbedsLabel);
   let editEmbedsCheck = document.createElement("input");
   editEmbedsCheck.name = "editEmbeds";
@@ -1452,11 +1714,12 @@ function injectScript() {
   editEmbedsLabel.prepend(editEmbedsCheck);
 
   // make an observer that checks for live pill changing from embeds
-  let replaceYoutubePillName = () => {
-    let embedMatch = window.parent.location.hash.match(/^#youtube\/(.*)$/);
+  let replacePillName = () => {
+    let embedMatch = window.parent.location.hash.match(/^(#youtube|#rumble)\/(.*)$/);
     if (embedMatch) {
-      let embedId = embedMatch[1];
-      getYoutubeStreamMetadata(embedId, (metadata) => {
+      let platform = embedMatch[1];
+      let embedId = embedMatch[2];
+      getStreamMetadata(platform, embedId, (metadata) => {
         if ('author_name' in metadata) {
           let channel = metadata['author_name'];
 
@@ -1470,7 +1733,7 @@ function injectScript() {
     for (let mutation of mutations) {
       for (let node of mutation.addedNodes) {
         if (livePill != undefined) {
-          replaceYoutubePillName();
+          replacePillName();
         }
       }
     }
@@ -1484,7 +1747,7 @@ function injectScript() {
   let editEmbedPillGroup = document.createElement("div");
   editEmbedPillGroup.className = "form-group checkbox";
   let editEmbedPillLabel = document.createElement("label");
-  editEmbedPillLabel.innerHTML = "Replace a YouTube embed's stream ID with the channel name in the live pill";
+  editEmbedPillLabel.innerHTML = "Replace a YouTube and Rumble embed's ID with the channel name in the live pill";
   editEmbedPillGroup.appendChild(editEmbedPillLabel);
   let editEmbedPillCheck = document.createElement("input");
   editEmbedPillCheck.name = "editEmbedPill";
@@ -1501,7 +1764,7 @@ function injectScript() {
     }
   });
   if (config.editEmbedPill && livePill != undefined) {
-    replaceYoutubePillName();
+    replacePillName();
     pillObserver.observe(livePill, {
       childList: true
     });
@@ -1526,10 +1789,10 @@ function injectScript() {
 
   // creating hide invidual flairs setting
   const flairs = getAllFlairIds();
-  // creates flair1-flair50
+  // creates flair1-flair100
   function getAllFlairIds() {
     const flairIds = [];
-    for (let i = 1; i <= 50; i++) {
+    for (let i = 1; i <= 100; i++) {
       flairIds.push(`flair${i}`);
     }
     // Add other flair names
@@ -1836,6 +2099,7 @@ function injectScript() {
   settingsArea.appendChild(embedTimeGroup);
   settingsArea.appendChild(twitchEmbedFormatGroup);
   settingsArea.appendChild(youtubeEmbedFormatGroup);
+  settingsArea.appendChild(rumbleEmbedFormatGroup);
   let phrasesTitle = document.createElement("h4");
   phrasesTitle.innerHTML = "Utilities Phrases Settings";
   settingsArea.appendChild(phrasesTitle);
@@ -1886,7 +2150,7 @@ function injectScript() {
     constructor() {
       this.bigscreenPath = "/bigscreen";
       this.bigscreenregex = new RegExp(
-        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|#rumble|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
+        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|#rumble|#kick|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
         "g"
       );
 
@@ -2046,6 +2310,20 @@ function injectScript() {
                 source +
                 '" target ="_blank">(source)</a>';
               break;
+            case 6:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$3/' +
+                channel +
+                ' (' +
+                title +
+                ')</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2060,6 +2338,83 @@ function injectScript() {
           break;
         case "#rumble":
           source = "https://rumble.com/embed/" + str.split("/")[1];
+          switch (config.rumbleEmbedFormat) {
+            case 2:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$2 (' +
+                channel +
+                ')</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 3:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$2 (' +
+                title +
+                ')</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 4:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$3/' +
+                channel +
+                '</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 5:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$3/' +
+                title +
+                '</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            case 6:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$3/' +
+                channel +
+                ' (' +
+                title +
+                ')</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+            default:
+              replacerString =
+                '$1<a class="externallink bookmarklink" href="' +
+                this.url +
+                '$2" target="' +
+                target +
+                '">$2</a> <a class="externallink bookmarklink" href="' +
+                source +
+                '" target ="_blank">(source)</a>';
+              break;
+          }
+          break;
+        case "#kick":
+          source = "https://kick.com/" + str.split("/")[1];
           replacerString =
             '$1<a class="externallink bookmarklink" href="' +
             this.url +
@@ -2280,6 +2635,42 @@ function injectScript() {
 
   getPhrases();
   
+  // when no whisper tabs are opened, the chat window selector has no children
+  const chatwindowselector = document.querySelector("#chat-windows-select");
+  let dggIsActive = true;
+  
+  // create an observer that will fire when the chat window selector is updated
+  const windowObserver = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach(node => {
+          if (node.classList.contains('win-main')) {
+            dggIsActive = node.classList.contains('active');
+            if (!dggIsActive) {
+              foundPhraseOrNuke = false;
+              if (textarea.style.backgroundColor != "") {
+                textarea.style.backgroundColor = "";
+              }
+              if (config.preventEnter) {
+                sendAnywayButton.style.display = "none";
+              }
+            }
+          }
+        })
+      } else {
+        if (mutation.target.style.display == 'none') {
+          dggIsActive = true;
+        }
+      }
+      textScanner({});
+    }
+  });
+
+  windowObserver.observe(chatwindowselector, { 
+    childList: true,
+    attributes: true,
+  });
+
   function textScanner(event) {
     // ensure we dont fire on random empty keypresses
     if (!(event.code == "ControlLeft" || event.code == "ControlRight" || event.code == "AltLeft" || event.code == "AltRight" || event.code == "ShiftLeft" || event.code == "ShiftRight" || event.code == "MetaLeft" || event.code == "MetaRight")) {
@@ -2289,6 +2680,11 @@ function injectScript() {
       let resultLinks;
       let resultNukes;
       let result;
+
+      // exclude whispers sent using slash commands or when the main chat window is inactive
+      if (text.startsWith("/w ") || text.startsWith("/whisper ") || text.startsWith("/msg ") || text.startsWith ("/message ") || text.startsWith("/notify ") || text.startsWith("/tell ")|| !dggIsActive) {
+        return false;
+      }
 
       if (phrases.length > 0) {
         for (let entry of phrases) {
@@ -2767,10 +3163,21 @@ function injectScript() {
 
   // helper function to query youtube with a stream id to get metadata about that stream, including the stream's title and the channel's name
   // the metadata is passed into the given callback function
-  function getYoutubeStreamMetadata(youTubeStreamId, callback) {
+  function getStreamMetadata(platform, videoID, callback) {
+    let url;
+    switch (platform) {
+      case "#youtube":
+        url = `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${videoID}`;
+        break;
+      case "#rumble":
+        url = `https://rumble.com/api/Media/oembed?format=json&url=https://rumble.com/embed/${videoID}`;
+        break;
+      default:
+        return;
+    }
     GM.xmlHttpRequest({
       method: 'GET',
-      url: `https://www.youtube.com/oembed?format=json&url=https://youtu.be/${youTubeStreamId}`,
+      url: url,
       onload: (response) => {
         if (errorAlert.style.display == "") {
           errorAlert.style.display = "none";

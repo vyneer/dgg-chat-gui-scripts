@@ -9,6 +9,22 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 
 - ...
 
+## [1.8] - 2023-06-17
+
+### Added
+
+- Increased flair check range up to 100 for new flairs (big PepoTurkey to Voiture)
+- Add multi-stream chat embed support (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
+- Excluded whispers from phrase detection (big PepoTurkey to Revel)
+- Add channel+title formatting for YouTube embeds (big thanks to [@cantclosevim](https://github.com/cantclosevim) <3)
+- Add Rumble embed formatting
+- Add Kick embeds
+- Add a manual update button
+
+### Fixed
+
+- Fix broken connection detection
+
 ## [1.7.4] - 2023-02-17
 
 ### Added
