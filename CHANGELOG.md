@@ -12,6 +12,7 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 - Excluded whispers from phrase detection (big PepoTurkey to Revel)
 - Add channel+title formatting for YouTube embeds (big thanks to [@cantclosevim](https://github.com/cantclosevim) <3)
 - Add Rumble embed formatting
+- Add Kick embeds
 
 ## [1.7.4] - 2023-02-17
 
