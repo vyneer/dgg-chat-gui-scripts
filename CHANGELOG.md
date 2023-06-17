@@ -13,6 +13,8 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 - Add channel+title formatting for YouTube embeds (big thanks to [@cantclosevim](https://github.com/cantclosevim) <3)
 - Add Rumble embed formatting
 - Add Kick embeds
+- Fix broken connection detection
+- Add a manual update button
 
 ## [1.7.4] - 2023-02-17
 
