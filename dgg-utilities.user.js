@@ -9,6 +9,7 @@
 // @run-at       document-start
 // @allFrames    true
 // @grant        GM.xmlHttpRequest
+// @grant        GM.registerMenuCommand
 // @connect      vyneer.me
 // @connect      mitchdev.net
 // @connect      youtube.com
@@ -110,6 +111,44 @@ let foundPhraseOrNuke = false;
 let nukesTimestamp = 0;
 let mutelinksTimestamp = 0;
 let phrasesTimestamp = 0;
+
+const updateCheck = (cb) => {
+  GM.xmlHttpRequest({
+    method: "GET",
+    url: `https://vyneer.me/tools/script/${scriptVersion}`,
+    onload: (response) => {
+      if (response.status == 200) {
+        let data = JSON.parse(response.response);
+        if ("link" in data && "version" in data) {
+          if (GM_info.script.version < data.version) {
+            cb(data);
+          } else {
+            cb(undefined);
+          }
+        } else {
+          cb(undefined);
+        }
+      } else {
+        console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP status code: ${response.status} - ${response.statusText}`);
+      }
+    },
+    onerror: () => {
+      console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP error`);
+    },
+    ontimeout: () => {
+      console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP timeout`);
+    }
+  });
+}
+
+const gmUpdateDataFunc = (data) => {
+  if (data) {
+    window.open(data.link, '_blank').focus();
+  }
+};
+GM.registerMenuCommand("Check for updates", () => {
+  updateCheck(gmUpdateDataFunc)
+});
 
 class ConfigItem {
   constructor(keyName, defaultValue) {
@@ -341,35 +380,6 @@ function injectScript() {
   }`;
   alertAnimationStyle.innerHTML = keyFrames;
   document.head.appendChild(alertAnimationStyle);
-
-  const updateCheck = (cb) => {
-    GM.xmlHttpRequest({
-      method: "GET",
-      url: `https://vyneer.me/tools/script/${scriptVersion}`,
-      onload: (response) => {
-        if (response.status == 200) {
-          let data = JSON.parse(response.response);
-          if ("link" in data && "version" in data) {
-            if (GM_info.script.version < data.version) {
-              cb(data);
-            } else {
-              cb(undefined);
-            }
-          } else {
-            cb(undefined);
-          }
-        } else {
-          console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP status code: ${response.status} - ${response.statusText}`);
-        }
-      },
-      onerror: () => {
-        console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP error`);
-      },
-      ontimeout: () => {
-        console.error(`[ERROR] [dgg-utils] couldn't check for updates - HTTP timeout`);
-      }
-    });
-  }
 
   // make an observer to show an update message after the "connected" alert in chat
   let updateObserver = new MutationObserver((mutations) => {
