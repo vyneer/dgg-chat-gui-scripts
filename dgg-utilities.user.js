@@ -2896,6 +2896,25 @@ function injectScript() {
     embeds();
   });
 
+  function embedIFrames() {
+    let hrefLocation = window.parent.location.href;
+    if (hrefLocation.includes('#')) {
+      // https://player.kick.com/xqc?autoplay=true
+      let [embedPlatform, embedVideoId] = hrefLocation.split('#').pop().split('/');
+      let videoEmbedUris = {
+        "youtube": `https://www.youtube.com/embed/${embedVideoId}?autoplay=1&amp;playsinline=1&amp;start=`,
+        "kick": `https://player.kick.com/${embedVideoId}?autoplay=true`
+      };
+      let videoEmbedUri = videoEmbedUris[embedPlatform] ?? function() {throw new Error('Invalid Video Embed')}();
+      let streamPanelHtml = window.parent.document.querySelector('#stream-panel > #stream-wrap > #embed').innerHTML;
+      if (! streamPanelHtml.includes('iframe')) {
+        window.parent.document.querySelector('#stream-panel > #stream-wrap > #embed').innerHTML += `<iframe class="w-100 h-100" allow="fullscreen; autoplay; encrypted-media; picture-in-picture; web-share" src="${videoEmbedUri}"></iframe></div>
+            </div>`;
+      }
+    }
+  }
+  embedIFrames();
+
   // function to show embeds
   function embeds() {
     let embedUrl;
