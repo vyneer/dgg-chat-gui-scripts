@@ -53,6 +53,10 @@
 // * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
 // * switch to the timestamp update model (might be buggy, but hopefully not)
 
+const VYNEER_PHRASES = false;
+const VYNEER_NUKES = false;
+const VYNEER_LINKS = false;
+
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
 const DEBUG = false;
@@ -565,10 +569,16 @@ function injectScript() {
   linksAlertButton.appendChild(linksAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_span);
   chatToolsArea.prepend(embedsButton);
-  chatToolsArea.prepend(sendAnywayButton);
+  if (VYNEER_PHRASES || VYNEER_NUKES || VYNEER_LINKS) {
+    chatToolsArea.prepend(sendAnywayButton);
+  }
   utilitiesButtons.appendChild(errorAlert);
-  utilitiesButtons.appendChild(nukeAlertButton);
-  utilitiesButtons.appendChild(linksAlertButton);
+  if (VYNEER_NUKES) {
+    utilitiesButtons.appendChild(nukeAlertButton);
+  }
+  if (VYNEER_LINKS) {
+    utilitiesButtons.appendChild(linksAlertButton);
+  }
   chatWhispersArea.appendChild(utilitiesButtons);
 
   // creating the settings page
@@ -2115,10 +2125,18 @@ function injectScript() {
   let phrasesTitle = document.createElement("h4");
   phrasesTitle.innerHTML = "Utilities Phrases Settings";
   settingsArea.appendChild(phrasesTitle);
-  settingsArea.appendChild(colorOnMutelinksGroup);
-  settingsArea.appendChild(phraseColorGroup);
-  settingsArea.appendChild(nukeColorGroup);
-  settingsArea.appendChild(mutelinksColorGroup);
+  if (VYNEER_LINKS) {
+    settingsArea.appendChild(colorOnMutelinksGroup);
+  }
+  if (VYNEER_PHRASES) {
+    settingsArea.appendChild(phraseColorGroup);
+  }
+  if (VYNEER_NUKES) {
+    settingsArea.appendChild(nukeColorGroup);
+  }
+  if (VYNEER_LINKS) {
+    settingsArea.appendChild(mutelinksColorGroup);
+  }
   settingsArea.appendChild(customPhrasesGroup);
   settingsArea.appendChild(customPhrasesSoftGroup);
   settingsArea.appendChild(customColorGroup);
@@ -2645,7 +2663,9 @@ function injectScript() {
     });
   }
 
-  getPhrases();
+  if (VYNEER_PHRASES) {
+    getPhrases();
+  }
   
   // when no whisper tabs are opened, the chat window selector has no children
   const chatwindowselector = document.querySelector("#chat-windows-select");
@@ -2698,7 +2718,7 @@ function injectScript() {
         return false;
       }
 
-      if (phrases.length > 0) {
+      if (VYNEER_PHRASES && phrases.length > 0) {
         for (let entry of phrases) {
           if (typeof(entry) === 'string') {
             if (text.indexOf(entry) != -1) {
@@ -2714,7 +2734,7 @@ function injectScript() {
         }
       }
 
-      if (nukesCompiled.length > 0) {
+      if (VYNEER_NUKES && nukesCompiled.length > 0) {
         for (let entry of nukesCompiled) {
           if (typeof(entry) === 'string') {
             if (text.indexOf(entry) != -1) {
@@ -2730,7 +2750,7 @@ function injectScript() {
         }
       }
 
-      if (mutelinks && config.colorOnMutelinks) {
+      if (VYNEER_LINKS && mutelinks && config.colorOnMutelinks) {
         for (let entry of mutelinksChecklist) {
           if (text.indexOf(entry) != -1) {
             resultLinks = true;
@@ -2829,7 +2849,7 @@ function injectScript() {
   textarea.addEventListener("keyup", (e) => {
       textScanner(e);
   });
-
+  
   // function to simplify appending embeds
   function serveEmbeds(data, emb, ifnone) {
     if (data.length > 0) {
@@ -3133,45 +3153,53 @@ function injectScript() {
     });
   }
 
-  getNukes();
-  getMutelinks();
-
-  setInterval(() => {
-    getNukesMutesPhrasesTimestamps();
-  }, 15000);
-
-  // make an observer move nuke/mutelinks buttons based on amount of whispers
-  let marginObserver = new MutationObserver((mutations) => {
-    utilitiesButtons.style.marginLeft = `${mutations[0].target.offsetWidth}px`;
-  });
-  marginObserver.observe(
-    document.querySelector("#chat-whisper-unread-indicator"),
-    { characterData: false, attributes: false, childList: true, subtree: false }
-  );
-
-  // adding an event listener to the nukes button
-  // once you press it it fetches nukes from vyneer.me and displays them in chat
-  nukeAlertButton.addEventListener("click", () => {
-    new DGGMsg(`Showing current nukes...`, "msg-info", "").update();
-
-    if (nukes.length > 0) {
-      nukes.forEach((result) => {
-        new DGGMsg(
-          `${result.word} (${result.type.toString().toLowerCase()}d for ${
-            result.duration
-          })`,
-          "msg-status msg-historical",
-          ""
-        ).update();
-      });
-    } else {
-      new DGGMsg(
-        `Looks like there's no data regarding the nukes.`,
-        "msg-error",
-        ""
-      ).update();
+  if (VYNEER_NUKES || VYNEER_LINKS) {
+    if (VYNEER_NUKES) {
+      getNukes();
     }
-  });
+    if (VYNEER_LINKS) {
+      getMutelinks();
+    }
+
+    setInterval(() => {
+      getNukesMutesPhrasesTimestamps();
+    }, 15000);
+
+    // make an observer move nuke/mutelinks buttons based on amount of whispers
+    let marginObserver = new MutationObserver((mutations) => {
+      utilitiesButtons.style.marginLeft = `${mutations[0].target.offsetWidth}px`;
+    });
+    marginObserver.observe(
+      document.querySelector("#chat-whisper-unread-indicator"),
+      { characterData: false, attributes: false, childList: true, subtree: false }
+    );
+
+    if (VYNEER_NUKES) {
+      // adding an event listener to the nukes button
+      // once you press it it fetches nukes from vyneer.me and displays them in chat
+      nukeAlertButton.addEventListener("click", () => {
+        new DGGMsg(`Showing current nukes...`, "msg-info", "").update();
+
+        if (nukes.length > 0) {
+          nukes.forEach((result) => {
+            new DGGMsg(
+              `${result.word} (${result.type.toString().toLowerCase()}d for ${
+                result.duration
+              })`,
+              "msg-status msg-historical",
+              ""
+            ).update();
+          });
+        } else {
+          new DGGMsg(
+            `Looks like there's no data regarding the nukes.`,
+            "msg-error",
+            ""
+          ).update();
+        }
+      });
+    }
+  }
 
   // helper function to query youtube with a stream id to get metadata about that stream, including the stream's title and the channel's name
   // the metadata is passed into the given callback function
