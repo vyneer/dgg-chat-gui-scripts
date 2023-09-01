@@ -53,6 +53,9 @@
 // * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
 // * switch to the timestamp update model (might be buggy, but hopefully not)
 
+// SWITCH BACK TO vyneer.me EMBEDS (will stop working on September 1st 2024)
+const VYNEER_EMBEDS = false;
+
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
 const DEBUG = false;
@@ -488,6 +491,54 @@ function injectScript() {
       break;
   }
 
+  let nativeEmbedsWs = undefined;
+  let nativeEmbedsReconnectCount = 0;
+  const nativeEmbedsConnect = () => {
+    nativeEmbedsWs = new WebSocket("wss://live.destiny.gg/ws");
+    nativeEmbedsWs.onmessage = (event) => {
+      nativeEmbedsReconnectCount = 0;
+      let data = JSON.parse(event.data);
+      if (data.type == "dggApi:embeds") {
+        localStorage.setItem(data.type, JSON.stringify(data.data));
+      }
+    }
+    nativeEmbedsWs.onclose = (event) => {
+      console.warn(`[WARNING] [dgg-utils] closed the native dgg embeds websocket connection, reconnecting in ${nativeEmbedsReconnectCount} sec - ${event.code}: ${event.reason}`);
+      setTimeout(() => {
+        switch (true) {
+          case nativeEmbedsReconnectCount == 0:
+            nativeEmbedsReconnectCount = 1;
+            break;
+          case nativeEmbedsReconnectCount > 0 && nativeEmbedsReconnectCount < 32:
+            nativeEmbedsReconnectCount *= 2;
+            break;
+          default:
+            break;
+        }
+        nativeEmbedsConnect(nativeEmbedsReconnectCount);
+      }, nativeEmbedsReconnectCount*1000);
+    }
+    nativeEmbedsWs.onerror = (error) => {
+      console.error(`[ERROR] [dgg-utils] error with the native dgg embeds websocket connection, reconnecting in ${nativeEmbedsReconnectCount} sec - ${error}`);
+      setTimeout(() => {
+        switch (true) {
+          case nativeEmbedsReconnectCount == 0:
+            nativeEmbedsReconnectCount = 1;
+            break;
+          case nativeEmbedsReconnectCount > 0 && nativeEmbedsReconnectCount < 32:
+            nativeEmbedsReconnectCount *= 2;
+            break;
+          default:
+            break;
+        }
+        nativeEmbedsConnect(nativeEmbedsReconnectCount);
+      }, nativeEmbedsReconnectCount*1000);
+    }
+  }
+  if (!VYNEER_EMBEDS && window.parent.location.href.includes("embed")) {
+    nativeEmbedsConnect();
+  }
+
   // making an error alert
   let chatWhispersArea = document.querySelectorAll(".chat-tools-group")[0];
   let errorAlert = document.createElement("a");
@@ -564,7 +615,9 @@ function injectScript() {
   nukeAlertButton.appendChild(nukeAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_span);
-  chatToolsArea.prepend(embedsButton);
+  if (VYNEER_EMBEDS || window.parent.location.href.includes("embed")) {
+    chatToolsArea.prepend(embedsButton);
+  }
   chatToolsArea.prepend(sendAnywayButton);
   utilitiesButtons.appendChild(errorAlert);
   utilitiesButtons.appendChild(nukeAlertButton);
@@ -2106,12 +2159,14 @@ function injectScript() {
   settingsArea.appendChild(embedsTitle);
   settingsArea.appendChild(showLastVODGroup);
   settingsArea.appendChild(embedsOnLaunchGroup);
-  settingsArea.appendChild(lastEmbedsGroup);
-  settingsArea.appendChild(lastIfNoneGroup);
-  settingsArea.appendChild(embedTimeGroup);
-  settingsArea.appendChild(twitchEmbedFormatGroup);
-  settingsArea.appendChild(youtubeEmbedFormatGroup);
-  settingsArea.appendChild(rumbleEmbedFormatGroup);
+  if (VYNEER_EMBEDS) {
+    settingsArea.appendChild(lastEmbedsGroup);
+    settingsArea.appendChild(lastIfNoneGroup);
+    settingsArea.appendChild(embedTimeGroup);
+    settingsArea.appendChild(twitchEmbedFormatGroup);
+    settingsArea.appendChild(youtubeEmbedFormatGroup);
+    settingsArea.appendChild(rumbleEmbedFormatGroup);
+  }
   let phrasesTitle = document.createElement("h4");
   phrasesTitle.innerHTML = "Utilities Phrases Settings";
   settingsArea.appendChild(phrasesTitle);
@@ -2135,6 +2190,11 @@ function injectScript() {
   settingsArea.appendChild(ignoredPhrasesGroup);
   settingsArea.appendChild(preventEnterGroup);
   settingsArea.appendChild(editEmbedsGroup);
+  if (!VYNEER_EMBEDS) {
+    settingsArea.appendChild(twitchEmbedFormatGroup);
+    settingsArea.appendChild(youtubeEmbedFormatGroup);
+    settingsArea.appendChild(rumbleEmbedFormatGroup);
+  }
   settingsArea.appendChild(editEmbedPillGroup);
 
   // https://www.npmjs.com/package/text-ellipsis
@@ -2194,16 +2254,18 @@ function injectScript() {
           source = "https://twitch.tv/" + str.split("/")[1];
           switch (config.twitchEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+              }
               break;
             default:
               replacerString =
@@ -2221,17 +2283,19 @@ function injectScript() {
           source = "https://twitch.tv/videos/" + str.split("/")[1];
           switch (config.twitchEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>'; 
+                break;
+              }
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2248,17 +2312,19 @@ function injectScript() {
           source = "https://clips.twitch.tv/" + str.split("/")[1];
           switch (config.twitchEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2275,67 +2341,77 @@ function injectScript() {
           source = "https://youtu.be/" + str.split("/")[1];
           switch (config.youtubeEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                channel +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  channel +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 3:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 4:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                channel +
-                '</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  channel +
+                  '</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 5:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                title +
-                '</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  title +
+                  '</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 6:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                channel +
-                ' (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel && title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  channel +
+                  ' (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2352,67 +2428,77 @@ function injectScript() {
           source = "https://rumble.com/embed/" + str.split("/")[1];
           switch (config.rumbleEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                channel +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  channel +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 3:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 4:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                channel +
-                '</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  channel +
+                  '</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 5:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                title +
-                '</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  title +
+                  '</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 6:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                channel +
-                ' (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel && title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  channel +
+                  ' (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2831,7 +2917,7 @@ function injectScript() {
   });
 
   // function to simplify appending embeds
-  function serveEmbeds(data, emb, ifnone) {
+  function serveEmbeds(data, emb, ifnone, native) {
     if (data.length > 0) {
       data.forEach((entry) => {
         if (!emb) {
@@ -2893,11 +2979,19 @@ function injectScript() {
           });
         }
       } else {
-        new DGGMsg(
-          `Looks like there's no data regarding the last embeds.`,
-          "msg-error",
-          ""
-        ).update();
+        if (native) {
+          new DGGMsg(
+            `Looks like there's no data regarding the embeds.`,
+            "msg-error",
+            ""
+          ).update();
+        } else {
+          new DGGMsg(
+            `Looks like there's no data regarding the last embeds.`,
+            "msg-error",
+            ""
+          ).update();
+        }
       }
     }
   }
@@ -2910,75 +3004,125 @@ function injectScript() {
 
   // function to show embeds
   function embeds() {
-    let embedUrl;
+    if (VYNEER_EMBEDS) {
+      let embedUrl;
 
-    if (!config.lastEmbeds) {
+      if (!config.lastEmbeds) {
+        new DGGMsg(
+          `Getting top 5 embeds in the last ${config.embedTime} minutes...`,
+          "msg-info",
+          ""
+        ).update();
+        embedUrl = `https://vyneer.me/tools/embeds?t=${config.embedTime}`;
+      } else {
+        new DGGMsg(`Getting last 5 embeds...`, "msg-info", "").update();
+        embedUrl = `https://vyneer.me/tools/embeds/last`;
+      }
+  
+      GM.xmlHttpRequest({
+        method: "GET",
+        url: embedUrl,
+        onload: (response) => {
+          if (response.status == 200) {
+            let embedData = JSON.parse(response.response);
+            if (config.lastEmbeds) {
+              embedData = embedData.reverse();
+            }
+            if (config.showLastVOD) {
+              GM.xmlHttpRequest({
+                method: "GET",
+                url: "https://vyneer.me/tools/ytvods",
+                onload: (response) => {
+                  let vodData = [];
+                  if (response.status == 200) {
+                    vodData = JSON.parse(response.response);
+                    if (vodData.length > 0) {
+                      new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
+                    } else {
+                      new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                      console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - the VOD db is empty`);
+                    }
+                  } else {
+                    new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                    console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP status code: ${response.status} - ${response.statusText}`);
+                  }
+                  serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+                },
+                onerror: () => {
+                  new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                  console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP error`);
+                },
+                ontimeout: () => {
+                  new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                  console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+                }
+              });
+            } else {
+              serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+            }
+          } else {
+            new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+            console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - URL: ${embedUrl}, HTTP status code: ${response.status} - ${response.statusText}`);
+          }
+        },
+        onerror: () => {
+          new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+          console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP error`);
+        },
+        ontimeout: () => {
+          new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+          console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+        }
+      });
+    } else {
       new DGGMsg(
-        `Getting top 5 embeds in the last ${config.embedTime} minutes...`,
+        `Getting native d.gg embeds data...`,
         "msg-info",
         ""
       ).update();
-      embedUrl = `https://vyneer.me/tools/embeds?t=${config.embedTime}`;
-    } else {
-      new DGGMsg(`Getting last 5 embeds...`, "msg-info", "").update();
-      embedUrl = `https://vyneer.me/tools/embeds/last`;
-    }
-
-    GM.xmlHttpRequest({
-      method: "GET",
-      url: embedUrl,
-      onload: (response) => {
-        if (response.status == 200) {
-          let embedData = JSON.parse(response.response);
-          if (config.lastEmbeds) {
-            embedData = embedData.reverse();
-          }
-          if (config.showLastVOD) {
-            GM.xmlHttpRequest({
-              method: "GET",
-              url: "https://vyneer.me/tools/ytvods",
-              onload: (response) => {
-                let vodData = [];
-                if (response.status == 200) {
-                  vodData = JSON.parse(response.response);
-                  if (vodData.length > 0) {
-                    new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
-                  } else {
-                    new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
-                    console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - the VOD db is empty`);
-                  }
-                } else {
-                  new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
-                  console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP status code: ${response.status} - ${response.statusText}`);
-                }
-                serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
-              },
-              onerror: () => {
+      let rawEmbeds = JSON.parse(localStorage.getItem("dggApi:embeds") ?? "[]");
+      let embedData = rawEmbeds.map((element) => {
+                        return {
+                          "link": `#${element.platform}/${element.id}`,
+                          "platform": element.platform,
+                          "channel": "",
+                          "title": "",
+                          "count": element.count,
+                        }
+                      })
+      if (config.showLastVOD) {
+        GM.xmlHttpRequest({
+          method: "GET",
+          url: "https://vyneer.me/tools/ytvods",
+          onload: (response) => {
+            let vodData = [];
+            if (response.status == 200) {
+              vodData = JSON.parse(response.response);
+              if (vodData.length > 0) {
+                new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
+              } else {
                 new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
-                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP error`);
-              },
-              ontimeout: () => {
-                new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
-                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - the VOD db is empty`);
               }
-            });
-          } else {
-            serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+            } else {
+              new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+              console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP status code: ${response.status} - ${response.statusText}`);
+            }
+            serveEmbeds(embedData, false, false, true);
+          },
+          onerror: () => {
+            new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+            console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP error`);
+          },
+          ontimeout: () => {
+            new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+            console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
           }
-        } else {
-          new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
-          console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - URL: ${embedUrl}, HTTP status code: ${response.status} - ${response.statusText}`);
-        }
-      },
-      onerror: () => {
-        new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
-        console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP error`);
-      },
-      ontimeout: () => {
-        new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
-        console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+        });
+      } else {
+        serveEmbeds(embedData, false, false, true);
       }
-    });
+    }
   }
 
   // function to see get latest timestamps of nukes/phrases/mutelinks
