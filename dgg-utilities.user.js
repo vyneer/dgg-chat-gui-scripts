@@ -3044,7 +3044,7 @@ function injectScript() {
                 const regex = new RegExp(regexString, "i");
                 nukesCompiled.push(regex);
               } else {
-                nukesCompiled.push(entry.word);
+                nukesCompiled.push(entry.word.toLowerCase());
               }
             });
             nukeAlertButton.style.display = "";
