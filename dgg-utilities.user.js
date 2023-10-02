@@ -53,10 +53,10 @@
 // * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
 // * switch to the timestamp update model (might be buggy, but hopefully not)
 
-let EMBEDS_PROVIDER = "native";
-let PHRASES_PROVIDER = "vyneer";
-let NUKES_PROVIDER = "vyneer";
-let MUTELINKS_PROVIDER = "vyneer";
+let EMBEDS_PROVIDER = "native"; // possible options: vyneer, native, disabled
+let PHRASES_PROVIDER = "vyneer"; // possible options: vyneer, native
+let NUKES_PROVIDER = "vyneer"; // possible options: vyneer, native
+let MUTELINKS_PROVIDER = "vyneer"; // possible options: vyneer, native
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
@@ -194,6 +194,7 @@ const configItems = {
   stickyWhispers    : new ConfigItem("stickyWhispers",     false   ),
   ignorePhrases     : new ConfigItem("ignorePhrases",      false   ),
   ignoredPhraseList : new ConfigItem("ignoredPhraseList",  []      ),
+  ignoreProviders   : new ConfigItem("ignoreProviders",    false   ),
 };
 class Config {
   #configItems;
@@ -262,44 +263,52 @@ document.addEventListener(
   true
 );
 
-GM.xmlHttpRequest({
-  method: "GET",
-  url: `https://vyneer.me/tools/providers`,
-  onload: (response) => {
-    if (response.status == 200) {
-      let data = JSON.parse(response.response);
-      if ("embeds" in data && "phrases" in data && "nukes" in data && "links" in data) {
-        EMBEDS_PROVIDER = data.embeds ?? EMBEDS_PROVIDER;
-        PHRASES_PROVIDER = data.phrases ?? PHRASES_PROVIDER;
-        NUKES_PROVIDER = data.nukes ?? NUKES_PROVIDER;
-        MUTELINKS_PROVIDER = data.links ?? MUTELINKS_PROVIDER;
-      }
-    } else {
-      console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP status code: ${response.status} - ${response.statusText}`);
-    }
-    if (document.readyState !== "loading") {
-      injectScript();
-    } else {
-      document.addEventListener("DOMContentLoaded", injectScript);
-    }
-  },
-  onerror: () => {
-    console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP error`);
-    if (document.readyState !== "loading") {
-      injectScript();
-    } else {
-      document.addEventListener("DOMContentLoaded", injectScript);
-    }
-  },
-  ontimeout: () => {
-    console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP timeout`);
-    if (document.readyState !== "loading") {
-      injectScript();
-    } else {
-      document.addEventListener("DOMContentLoaded", injectScript);
-    }
+if (config.ignoreProviders) {
+  if (document.readyState !== "loading") {
+    injectScript();
+  } else {
+    document.addEventListener("DOMContentLoaded", injectScript);
   }
-});
+} else {
+  GM.xmlHttpRequest({
+    method: "GET",
+    url: `https://vyneer.me/tools/providers`,
+    onload: (response) => {
+      if (response.status == 200) {
+        let data = JSON.parse(response.response);
+        if ("embeds" in data && "phrases" in data && "nukes" in data && "links" in data) {
+          EMBEDS_PROVIDER = data.embeds ?? EMBEDS_PROVIDER;
+          PHRASES_PROVIDER = data.phrases ?? PHRASES_PROVIDER;
+          NUKES_PROVIDER = data.nukes ?? NUKES_PROVIDER;
+          MUTELINKS_PROVIDER = data.links ?? MUTELINKS_PROVIDER;
+        }
+      } else {
+        console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP status code: ${response.status} - ${response.statusText}`);
+      }
+      if (document.readyState !== "loading") {
+        injectScript();
+      } else {
+        document.addEventListener("DOMContentLoaded", injectScript);
+      }
+    },
+    onerror: () => {
+      console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP error`);
+      if (document.readyState !== "loading") {
+        injectScript();
+      } else {
+        document.addEventListener("DOMContentLoaded", injectScript);
+      }
+    },
+    ontimeout: () => {
+      console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP timeout`);
+      if (document.readyState !== "loading") {
+        injectScript();
+      } else {
+        document.addEventListener("DOMContentLoaded", injectScript);
+      }
+    }
+  });
+}
 
 function injectScript() {
   let chatlines = document.querySelector(".chat-lines");
@@ -1299,6 +1308,42 @@ function injectScript() {
 
   embedIconStyleGroup.appendChild(embedIconStyleSelect);
 
+  // creating an ignore providers setting
+  let ignoreProvidersGroup = document.createElement("div");
+  ignoreProvidersGroup.className = "form-group checkbox";
+  let ignoreProvidersLabel = document.createElement("label");
+  ignoreProvidersLabel.innerHTML = "Ignore data providers set by the server";
+  ignoreProvidersGroup.appendChild(ignoreProvidersLabel);
+  let ignoreProvidersCheck = document.createElement("input");
+  ignoreProvidersCheck.name = "ignoreProviders";
+  ignoreProvidersCheck.type = "checkbox";
+  ignoreProvidersCheck.checked = config.ignoreProviders;
+  ignoreProvidersCheck.addEventListener("change", () => config.ignoreProviders = ignoreProvidersCheck.checked);
+  ignoreProvidersLabel.prepend(ignoreProvidersCheck);
+
+  let currentProvidersGroup = document.createElement("div");
+  currentProvidersGroup.className = "form-group";
+  currentProvidersGroup.style.display = "grid";
+  let currentProvidersLabel = document.createElement("label");
+  currentProvidersLabel.innerHTML = "Current data providers:";
+  currentProvidersGroup.appendChild(currentProvidersLabel);
+
+  let embedsProvider = document.createElement("span");
+  embedsProvider.innerText = `Embeds: ${EMBEDS_PROVIDER}`;
+  currentProvidersGroup.appendChild(embedsProvider);
+
+  let phrasesProvider = document.createElement("span");
+  phrasesProvider.innerText = `Phrases: ${PHRASES_PROVIDER}`;
+  currentProvidersGroup.appendChild(phrasesProvider);
+
+  let nukesProvider = document.createElement("span");
+  nukesProvider.innerText = `Nukes: ${NUKES_PROVIDER}`;
+  currentProvidersGroup.appendChild(nukesProvider);
+
+  let mutelinksProvider = document.createElement("span");
+  mutelinksProvider.innerText = `Mutelinks: ${MUTELINKS_PROVIDER}`;
+  currentProvidersGroup.appendChild(mutelinksProvider);
+
   // creating a show last steve vod setting
   let showLastVODGroup = document.createElement("div");
   showLastVODGroup.className = "form-group checkbox";
@@ -2191,15 +2236,18 @@ function injectScript() {
   settingsArea.appendChild(alwaysScrollDownGroup);
   settingsArea.appendChild(doubleClickCopyGroup);
   settingsArea.appendChild(embedChatGroup);
-  let embedsTitle = document.createElement("h4");
-  embedsTitle.innerHTML = "Utilities Embeds Settings";
+
   settingsArea.appendChild(changeTitleOnLiveGroup);
   settingsArea.appendChild(stickyMentionsGroup);
   settingsArea.appendChild(stickyWhispersGroup);
   if (EMBEDS_PROVIDER !== "disabled") {
     settingsArea.appendChild(embedIconStyleGroup);
   }
+  settingsArea.appendChild(ignoreProvidersGroup);
+  settingsArea.appendChild(currentProvidersGroup);
   settingsArea.appendChild(hideFlairsGroup);
+  let embedsTitle = document.createElement("h4");
+  embedsTitle.innerHTML = "Utilities Embeds Settings";
   if (EMBEDS_PROVIDER !== "disabled") {
     settingsArea.appendChild(embedsTitle);
     settingsArea.appendChild(showLastVODGroup);
