@@ -262,12 +262,44 @@ document.addEventListener(
   true
 );
 
-// firemonkey compatibility stuff pepeW
-if (document.readyState !== "loading") {
-  injectScript();
-} else {
-  document.addEventListener("DOMContentLoaded", injectScript);
-}
+GM.xmlHttpRequest({
+  method: "GET",
+  url: `https://vyneer.me/tools/providers`,
+  onload: (response) => {
+    if (response.status == 200) {
+      let data = JSON.parse(response.response);
+      if ("embeds" in data && "phrases" in data && "nukes" in data && "links" in data) {
+        VYNEER_EMBEDS = data.embeds === 'vyneer' ? true : false;
+        VYNEER_PHRASES = data.phrases === 'vyneer' ? true : false;
+        VYNEER_NUKES = data.nukes === 'vyneer' ? true : false;
+        VYNEER_LINKS = data.links === 'vyneer' ? true : false;
+      }
+    } else {
+      console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP status code: ${response.status} - ${response.statusText}`);
+    }
+    if (document.readyState !== "loading") {
+      injectScript();
+    } else {
+      document.addEventListener("DOMContentLoaded", injectScript);
+    }
+  },
+  onerror: () => {
+    console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP error`);
+    if (document.readyState !== "loading") {
+      injectScript();
+    } else {
+      document.addEventListener("DOMContentLoaded", injectScript);
+    }
+  },
+  ontimeout: () => {
+    console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP timeout`);
+    if (document.readyState !== "loading") {
+      injectScript();
+    } else {
+      document.addEventListener("DOMContentLoaded", injectScript);
+    }
+  }
+});
 
 function injectScript() {
   let chatlines = document.querySelector(".chat-lines");
