@@ -53,10 +53,10 @@
 // * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
 // * switch to the timestamp update model (might be buggy, but hopefully not)
 
-const VYNEER_EMBEDS = false;
-const VYNEER_PHRASES = false;
-const VYNEER_NUKES = false;
-const VYNEER_LINKS = false;
+let VYNEER_EMBEDS = false;
+let VYNEER_PHRASES = true;
+let VYNEER_NUKES = true;
+let VYNEER_LINKS = true;
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
