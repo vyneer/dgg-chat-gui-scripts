@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2023.06.17
+// @version      dev-2023.10.02
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -19,7 +19,11 @@
 // ==/UserScript==
 
 // ==Changelog==
-// v1.8
+// v1.9
+// * add native embeds support
+// * pull data platforms from vyneer.me (eliminates the need for updates when native phrases/nukes/mutelinks get added)
+// * fix a nuke detection bug
+// v1.8 - 2023-06-17
 // * increased flair check range up to 100 for new flairs (big PepoTurkey to Voiture)
 // * add multi-stream chat embed support (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
 // * excluded whispers from phrase detection (big PepoTurkey to Revel)
@@ -40,18 +44,6 @@
 // * add Rumble embeds
 // v1.7.1 - 2022-10-10
 // * remove the violentmonkey workaround
-// v1.7 - 2022-10-07
-// * move all the settings into a custom menu
-// * speedup banned phrase detection
-// * better mutelinks mode support (now detects SOME links in your messages!)
-// * message gets scanned on context menu paste now as well
-// * add a feature to show destiny's last vod on embed check
-// * slight sticky mentions visibility improvement
-// * script should work on strims.gg now
-// * new svg icon
-// * focus the chat input after double clicking a username to copy to input (big thanks to @mattroseman <3)
-// * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
-// * switch to the timestamp update model (might be buggy, but hopefully not)
 
 let EMBEDS_PROVIDER = "native"; // possible options: vyneer, native, disabled
 let PHRASES_PROVIDER = "vyneer"; // possible options: vyneer, native

@@ -8,7 +8,7 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 ## [Unreleased]
 
 - Add native embeds support
-- Pull data platforms from vyneer.me (eliminated the need for updates when native phrases/nukes/mutelinks get added)
+- Pull data platforms from vyneer.me (eliminates the need for updates when native phrases/nukes/mutelinks get added)
 - Fix a nuke detection bug
 
 ## [1.8] - 2023-06-17
