@@ -53,10 +53,10 @@
 // * fix the LIVE prepend bug that kept adding it to the title (big thanks to @mattroseman <3)
 // * switch to the timestamp update model (might be buggy, but hopefully not)
 
-let VYNEER_EMBEDS = false;
-let VYNEER_PHRASES = true;
-let VYNEER_NUKES = true;
-let VYNEER_LINKS = true;
+let EMBEDS_PROVIDER = "native";
+let PHRASES_PROVIDER = "vyneer";
+let NUKES_PROVIDER = "vyneer";
+let MUTELINKS_PROVIDER = "vyneer";
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
@@ -269,10 +269,10 @@ GM.xmlHttpRequest({
     if (response.status == 200) {
       let data = JSON.parse(response.response);
       if ("embeds" in data && "phrases" in data && "nukes" in data && "links" in data) {
-        VYNEER_EMBEDS = data.embeds === 'vyneer' ? true : false;
-        VYNEER_PHRASES = data.phrases === 'vyneer' ? true : false;
-        VYNEER_NUKES = data.nukes === 'vyneer' ? true : false;
-        VYNEER_LINKS = data.links === 'vyneer' ? true : false;
+        EMBEDS_PROVIDER = data.embeds ?? EMBEDS_PROVIDER;
+        PHRASES_PROVIDER = data.phrases ?? PHRASES_PROVIDER;
+        NUKES_PROVIDER = data.nukes ?? NUKES_PROVIDER;
+        MUTELINKS_PROVIDER = data.links ?? MUTELINKS_PROVIDER;
       }
     } else {
       console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP status code: ${response.status} - ${response.statusText}`);
@@ -447,7 +447,7 @@ function injectScript() {
             updateCheck(updateDataFunc);
 
             // show embeds on launch
-            if (config.embedsOnLaunch) {
+            if (config.embedsOnLaunch && EMBEDS_PROVIDER !== "disabled") {
               embeds();
             }
 
@@ -569,7 +569,7 @@ function injectScript() {
       }, nativeEmbedsReconnectCount*1000);
     }
   }
-  if (!VYNEER_EMBEDS && window.parent.location.href.includes("embed")) {
+  if (EMBEDS_PROVIDER === "native" && window.parent.location.href.includes("embed")) {
     nativeEmbedsConnect();
   }
 
@@ -649,17 +649,17 @@ function injectScript() {
   nukeAlertButton.appendChild(nukeAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_span);
-  if (VYNEER_EMBEDS || window.parent.location.href.includes("embed")) {
+  if (EMBEDS_PROVIDER === "vyneer" || (window.parent.location.href.includes("embed") && EMBEDS_PROVIDER !== "disabled")) {
     chatToolsArea.prepend(embedsButton);
   }
-  if (VYNEER_PHRASES || VYNEER_NUKES || VYNEER_LINKS) {
+  if (PHRASES_PROVIDER === "vyneer" || NUKES_PROVIDER === "vyneer" || MUTELINKS_PROVIDER === "vyneer") {
     chatToolsArea.prepend(sendAnywayButton);
   }
   utilitiesButtons.appendChild(errorAlert);
-  if (VYNEER_NUKES) {
+  if (NUKES_PROVIDER === "vyneer") {
     utilitiesButtons.appendChild(nukeAlertButton);
   }
-  if (VYNEER_LINKS) {
+  if (MUTELINKS_PROVIDER === "vyneer") {
     utilitiesButtons.appendChild(linksAlertButton);
   }
   chatWhispersArea.appendChild(utilitiesButtons);
@@ -1799,8 +1799,17 @@ function injectScript() {
   editEmbedsCheck.name = "editEmbeds";
   editEmbedsCheck.type = "checkbox";
   editEmbedsCheck.checked = config.editEmbeds;
-  editEmbedsCheck.addEventListener("change", () => {
-    config.editEmbeds = editEmbedsCheck.checked;
+  if (EMBEDS_PROVIDER !== "disabled") {
+    editEmbedsCheck.addEventListener("change", () => {
+      config.editEmbeds = editEmbedsCheck.checked;
+      if (config.editEmbeds) {
+        embedObserver.observe(chatlines, {
+          childList: true,
+        });
+      } else {
+        embedObserver.disconnect();
+      }
+    });
     if (config.editEmbeds) {
       embedObserver.observe(chatlines, {
         childList: true,
@@ -1808,13 +1817,6 @@ function injectScript() {
     } else {
       embedObserver.disconnect();
     }
-  });
-  if (config.editEmbeds) {
-    embedObserver.observe(chatlines, {
-      childList: true,
-    });
-  } else {
-    embedObserver.disconnect();
   }
   editEmbedsLabel.prepend(editEmbedsCheck);
 
@@ -2194,12 +2196,16 @@ function injectScript() {
   settingsArea.appendChild(changeTitleOnLiveGroup);
   settingsArea.appendChild(stickyMentionsGroup);
   settingsArea.appendChild(stickyWhispersGroup);
-  settingsArea.appendChild(embedIconStyleGroup);
+  if (EMBEDS_PROVIDER !== "disabled") {
+    settingsArea.appendChild(embedIconStyleGroup);
+  }
   settingsArea.appendChild(hideFlairsGroup);
-  settingsArea.appendChild(embedsTitle);
-  settingsArea.appendChild(showLastVODGroup);
-  settingsArea.appendChild(embedsOnLaunchGroup);
-  if (VYNEER_EMBEDS) {
+  if (EMBEDS_PROVIDER !== "disabled") {
+    settingsArea.appendChild(embedsTitle);
+    settingsArea.appendChild(showLastVODGroup);
+    settingsArea.appendChild(embedsOnLaunchGroup);
+  }
+  if (EMBEDS_PROVIDER === "vyneer") {
     settingsArea.appendChild(lastEmbedsGroup);
     settingsArea.appendChild(lastIfNoneGroup);
     settingsArea.appendChild(embedTimeGroup);
@@ -2210,16 +2216,16 @@ function injectScript() {
   let phrasesTitle = document.createElement("h4");
   phrasesTitle.innerHTML = "Utilities Phrases Settings";
   settingsArea.appendChild(phrasesTitle);
-  if (VYNEER_LINKS) {
+  if (MUTELINKS_PROVIDER === "vyneer") {
     settingsArea.appendChild(colorOnMutelinksGroup);
   }
-  if (VYNEER_PHRASES) {
+  if (PHRASES_PROVIDER === "vyneer") {
     settingsArea.appendChild(phraseColorGroup);
   }
-  if (VYNEER_NUKES) {
+  if (NUKES_PROVIDER === "vyneer") {
     settingsArea.appendChild(nukeColorGroup);
   }
-  if (VYNEER_LINKS) {
+  if (MUTELINKS_PROVIDER === "vyneer") {
     settingsArea.appendChild(mutelinksColorGroup);
   }
   settingsArea.appendChild(customPhrasesGroup);
@@ -2237,8 +2243,10 @@ function injectScript() {
   settingsArea.appendChild(experimentalSubTitle);
   settingsArea.appendChild(ignoredPhrasesGroup);
   settingsArea.appendChild(preventEnterGroup);
-  settingsArea.appendChild(editEmbedsGroup);
-  if (!VYNEER_EMBEDS) {
+  if (EMBEDS_PROVIDER !== "disabled") {
+    settingsArea.appendChild(editEmbedsGroup);
+  }
+  if (EMBEDS_PROVIDER === "native") {
     settingsArea.appendChild(twitchEmbedFormatGroup);
     settingsArea.appendChild(youtubeEmbedFormatGroup);
     settingsArea.appendChild(rumbleEmbedFormatGroup);
@@ -2779,7 +2787,7 @@ function injectScript() {
     });
   }
 
-  if (VYNEER_PHRASES) {
+  if (PHRASES_PROVIDER === "vyneer") {
     getPhrases();
   }
   
@@ -2834,7 +2842,7 @@ function injectScript() {
         return false;
       }
 
-      if (VYNEER_PHRASES && phrases.length > 0) {
+      if (PHRASES_PROVIDER === "vyneer" && phrases.length > 0) {
         for (let entry of phrases) {
           if (typeof(entry) === 'string') {
             if (text.indexOf(entry) != -1) {
@@ -2850,7 +2858,7 @@ function injectScript() {
         }
       }
 
-      if (VYNEER_NUKES && nukesCompiled.length > 0) {
+      if (NUKES_PROVIDER === "vyneer" && nukesCompiled.length > 0) {
         for (let entry of nukesCompiled) {
           if (typeof(entry) === 'string') {
             if (text.indexOf(entry) != -1) {
@@ -2866,7 +2874,7 @@ function injectScript() {
         }
       }
 
-      if (VYNEER_LINKS && mutelinks && config.colorOnMutelinks) {
+      if (MUTELINKS_PROVIDER === "vyneer" && mutelinks && config.colorOnMutelinks) {
         for (let entry of mutelinksChecklist) {
           if (text.indexOf(entry) != -1) {
             resultLinks = true;
@@ -3054,7 +3062,7 @@ function injectScript() {
 
   // function to show embeds
   function embeds() {
-    if (VYNEER_EMBEDS) {
+    if (EMBEDS_PROVIDER === "vyneer") {
       let embedUrl;
 
       if (!config.lastEmbeds) {
@@ -3327,11 +3335,11 @@ function injectScript() {
     });
   }
 
-  if (VYNEER_NUKES || VYNEER_LINKS) {
-    if (VYNEER_NUKES) {
+  if (NUKES_PROVIDER === "vyneer" || MUTELINKS_PROVIDER === "vyneer") {
+    if (NUKES_PROVIDER === "vyneer") {
       getNukes();
     }
-    if (VYNEER_LINKS) {
+    if (MUTELINKS_PROVIDER === "vyneer") {
       getMutelinks();
     }
 
@@ -3348,7 +3356,7 @@ function injectScript() {
       { characterData: false, attributes: false, childList: true, subtree: false }
     );
 
-    if (VYNEER_NUKES) {
+    if (NUKES_PROVIDER === "vyneer") {
       // adding an event listener to the nukes button
       // once you press it it fetches nukes from vyneer.me and displays them in chat
       nukeAlertButton.addEventListener("click", () => {
