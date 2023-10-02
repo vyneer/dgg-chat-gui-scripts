@@ -178,6 +178,8 @@ const configItems = {
   twitchEmbedFormat : new ConfigItem("twitchEmbedFormat",  1       ),
   youtubeEmbedFormat: new ConfigItem("youtubeEmbedFormat", 1       ),
   rumbleEmbedFormat : new ConfigItem("rumbleEmbedFormat",  1       ),
+  nativeEmbedTop    : new ConfigItem("nativeEmbedTop",     5       ),
+  nativeEmbedLimit  : new ConfigItem("nativeEmbedLimit",   0       ),
   colorOnMutelinks  : new ConfigItem("colorOnMutelinks",   false   ),
   phraseColor       : new ConfigItem("phraseColor",        "1f0000"),
   nukeColor         : new ConfigItem("nukeColor",          "1f1500"),
@@ -1545,6 +1547,44 @@ function injectScript() {
 
   rumbleEmbedFormatGroup.appendChild(rumbleEmbedFormatSelect);
 
+  // creating an embed time value setting
+  let nativeEmbedLimitGroup = document.createElement("div");
+  nativeEmbedLimitGroup.className = "form-group row";
+  let nativeEmbedLimitLabel = document.createElement("label");
+  nativeEmbedLimitLabel.innerHTML = "Embed Viewcount Limit";
+  nativeEmbedLimitLabel.title = "Only show embeds where viewcount is > than this value. Values <= 0 mean show every embed";
+  nativeEmbedLimitLabel.style.marginBottom = 0;
+  nativeEmbedLimitGroup.appendChild(nativeEmbedLimitLabel);
+  let nativeEmbedLimitArea = document.createElement("input");
+  nativeEmbedLimitArea.name = "nativeEmbedLimitArea";
+  nativeEmbedLimitArea.type = "number";
+  nativeEmbedLimitArea.className = "form-control";
+  nativeEmbedLimitArea.min = 0;
+  nativeEmbedLimitArea.value = config.nativeEmbedLimit;
+  nativeEmbedLimitArea.style.width = "120px";
+  nativeEmbedLimitArea.style.marginLeft = ".6em";
+  nativeEmbedLimitArea.addEventListener("change", () => config.nativeEmbedLimit = nativeEmbedLimitArea.value);
+  nativeEmbedLimitGroup.appendChild(nativeEmbedLimitArea);
+
+  // creating an embed time value setting
+  let nativeEmbedTopGroup = document.createElement("div");
+  nativeEmbedTopGroup.className = "form-group row";
+  let nativeEmbedTopLabel = document.createElement("label");
+  nativeEmbedTopLabel.innerHTML = "Show Top X Embeds";
+  nativeEmbedTopLabel.title = "Only show top X embeds, where X is some arbitrary number > 0. Values <= 0 mean show every embed";
+  nativeEmbedTopLabel.style.marginBottom = 0;
+  nativeEmbedTopGroup.appendChild(nativeEmbedTopLabel);
+  let nativeEmbedTopArea = document.createElement("input");
+  nativeEmbedTopArea.name = "nativeEmbedTopArea";
+  nativeEmbedTopArea.type = "number";
+  nativeEmbedTopArea.className = "form-control";
+  nativeEmbedTopArea.min = 0;
+  nativeEmbedTopArea.value = config.nativeEmbedTop;
+  nativeEmbedTopArea.style.width = "120px";
+  nativeEmbedTopArea.style.marginLeft = ".6em";
+  nativeEmbedTopArea.addEventListener("change", () => config.nativeEmbedTop = nativeEmbedTopArea.value);
+  nativeEmbedTopGroup.appendChild(nativeEmbedTopArea);
+
   // creating an phrase textarea color setting
   let phraseColorGroup = document.createElement("div");
   phraseColorGroup.className = "form-group row";
@@ -2260,6 +2300,10 @@ function injectScript() {
     settingsArea.appendChild(twitchEmbedFormatGroup);
     settingsArea.appendChild(youtubeEmbedFormatGroup);
     settingsArea.appendChild(rumbleEmbedFormatGroup);
+  }
+  if (EMBEDS_PROVIDER === "native") {
+    settingsArea.appendChild(nativeEmbedTopGroup);
+    settingsArea.appendChild(nativeEmbedLimitGroup);
   }
   let phrasesTitle = document.createElement("h4");
   phrasesTitle.innerHTML = "Utilities Phrases Settings";
@@ -3188,14 +3232,19 @@ function injectScript() {
       ).update();
       let rawEmbeds = JSON.parse(localStorage.getItem("dggApi:embeds") ?? "[]");
       let embedData = rawEmbeds.map((element) => {
-                        return {
-                          "link": `#${element.platform}/${element.id}`,
-                          "platform": element.platform,
-                          "channel": "",
-                          "title": "",
-                          "count": element.count,
+                        if (config.nativeEmbedLimit <= 0 || element.count >= config.nativeEmbedLimit) {
+                          return {
+                            "link": `#${element.platform}/${element.id}`,
+                            "platform": element.platform,
+                            "channel": "",
+                            "title": "",
+                            "count": element.count,
+                          }
                         }
                       })
+      if (config.nativeEmbedTop > 0) {
+        embedData = embedData.slice(0, config.nativeEmbedTop)
+      }
       if (config.showLastVOD) {
         GM.xmlHttpRequest({
           method: "GET",
