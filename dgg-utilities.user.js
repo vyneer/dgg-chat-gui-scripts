@@ -189,6 +189,8 @@ const configItems = {
   ignorePhrases     : new ConfigItem("ignorePhrases",      false   ),
   ignoredPhraseList : new ConfigItem("ignoredPhraseList",  []      ),
   ignoreProviders   : new ConfigItem("ignoreProviders",    false   ),
+  emoteAnimations   : new ConfigItem("emoteAnimations",    false   ),
+  flairAnimations   : new ConfigItem("flairAnimations",    false   ),
 };
 class Config {
   #configItems;
@@ -2168,6 +2170,64 @@ function injectScript() {
   `;
   toggleStickyWhispers(config.stickyWhispers);
 
+  // creating a setting to toggle emote animations
+  const disableEmoteAnimationsGroup = document.createElement("div");
+  disableEmoteAnimationsGroup.className = "form-group checkbox";
+  const disableEmoteAnimationsLabel = document.createElement("label");
+  disableEmoteAnimationsLabel.innerHTML = "Disable most emote animations";
+  disableEmoteAnimationsLabel.title = "Disables most emote animations, might help with chat performance";
+  disableEmoteAnimationsGroup.appendChild(disableEmoteAnimationsLabel);
+  const disableEmoteAnimationsCheck = document.createElement("input");
+  disableEmoteAnimationsCheck.name = "disableEmoteAnimations";
+  disableEmoteAnimationsCheck.type = "checkbox";
+  disableEmoteAnimationsCheck.checked = config.emoteAnimations;
+  function toggleEmoteAnimations(toggle) {
+    document
+      .getElementById("chat")
+      .classList
+      .toggle("vyneer-util-emote-animations", toggle);
+  }
+  disableEmoteAnimationsCheck.addEventListener("change", () => {
+    config.emoteAnimations = disableEmoteAnimationsCheck.checked;
+    toggleEmoteAnimations(config.emoteAnimations);
+  });
+  disableEmoteAnimationsLabel.prepend(disableEmoteAnimationsCheck);
+  settingsCss += `
+    #chat.vyneer-util-emote-animations .emote, #chat.vyneer-util-emote-animations .emote:hover, #chat.vyneer-util-emote-animations .emote:before, #chat.vyneer-util-emote-animations .emote:after {
+      animation: none !important;
+    }
+  `;
+  toggleEmoteAnimations(config.emoteAnimations);
+
+  // creating a setting to toggle emote animations
+  const disableFlairAnimationsGroup = document.createElement("div");
+  disableFlairAnimationsGroup.className = "form-group checkbox";
+  const disableFlairAnimationsLabel = document.createElement("label");
+  disableFlairAnimationsLabel.innerHTML = "Disable flair animations";
+  disableFlairAnimationsLabel.title = "Disables all flair animations (like Tier V rainbow text), might help with chat performance";
+  disableFlairAnimationsGroup.appendChild(disableFlairAnimationsLabel);
+  const disableFlairAnimationsCheck = document.createElement("input");
+  disableFlairAnimationsCheck.name = "disableFlairAnimations";
+  disableFlairAnimationsCheck.type = "checkbox";
+  disableFlairAnimationsCheck.checked = config.flairAnimations;
+  function toggleFlairAnimations(toggle) {
+    document
+      .getElementById("chat")
+      .classList
+      .toggle("vyneer-util-flair-animations", toggle);
+  }
+  disableFlairAnimationsCheck.addEventListener("change", () => {
+    config.flairAnimations = disableFlairAnimationsCheck.checked;
+    toggleFlairAnimations(config.flairAnimations);
+  });
+  disableFlairAnimationsLabel.prepend(disableFlairAnimationsCheck);
+  settingsCss += `
+    #chat.vyneer-util-flair-animations a.user, #chat.vyneer-util-flair-animations span.user {
+      animation: none !important;
+    }
+  `;
+  toggleFlairAnimations(config.flairAnimations);
+
   // Ignored phrases
   const ignoredPhrasesGroup = document.createElement("div");
   ignoredPhrasesGroup.className = "form-group checkbox";
@@ -2272,11 +2332,11 @@ function injectScript() {
   settingsArea.appendChild(changeTitleOnLiveGroup);
   settingsArea.appendChild(stickyMentionsGroup);
   settingsArea.appendChild(stickyWhispersGroup);
+  settingsArea.appendChild(disableEmoteAnimationsGroup);
+  settingsArea.appendChild(disableFlairAnimationsGroup);
   if (EMBEDS_PROVIDER !== "disabled") {
     settingsArea.appendChild(embedIconStyleGroup);
   }
-  settingsArea.appendChild(ignoreProvidersGroup);
-  settingsArea.appendChild(currentProvidersGroup);
   settingsArea.appendChild(hideFlairsGroup);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
@@ -2336,6 +2396,17 @@ function injectScript() {
     settingsArea.appendChild(rumbleEmbedFormatGroup);
   }
   settingsArea.appendChild(editEmbedPillGroup);
+  let debugTitle = document.createElement("h4");
+  debugTitle.innerHTML = "Utilities Debug Stuff";
+  debugTitle.style.marginBottom = "0px";
+  let debugSubTitle = document.createElement("h4");
+  debugSubTitle.innerHTML = "Don't touch if you don't know what you're doing.";
+  debugSubTitle.style.color = "orangered";
+  debugSubTitle.style.marginTop = "0px";
+  settingsArea.appendChild(debugTitle);
+  settingsArea.appendChild(debugSubTitle);
+  settingsArea.appendChild(ignoreProvidersGroup);
+  settingsArea.appendChild(currentProvidersGroup);
 
   // https://www.npmjs.com/package/text-ellipsis
   // cut off a string if too long
