@@ -2337,8 +2337,6 @@ function injectScript() {
   if (EMBEDS_PROVIDER !== "disabled") {
     settingsArea.appendChild(embedIconStyleGroup);
   }
-  settingsArea.appendChild(ignoreProvidersGroup);
-  settingsArea.appendChild(currentProvidersGroup);
   settingsArea.appendChild(hideFlairsGroup);
   let embedsTitle = document.createElement("h4");
   embedsTitle.innerHTML = "Utilities Embeds Settings";
@@ -2398,6 +2396,17 @@ function injectScript() {
     settingsArea.appendChild(rumbleEmbedFormatGroup);
   }
   settingsArea.appendChild(editEmbedPillGroup);
+  let debugTitle = document.createElement("h4");
+  debugTitle.innerHTML = "Utilities Debug Stuff";
+  debugTitle.style.marginBottom = "0px";
+  let debugSubTitle = document.createElement("h4");
+  debugSubTitle.innerHTML = "Don't touch if you don't know what you're doing.";
+  debugSubTitle.style.color = "orangered";
+  debugSubTitle.style.marginTop = "0px";
+  settingsArea.appendChild(debugTitle);
+  settingsArea.appendChild(debugSubTitle);
+  settingsArea.appendChild(ignoreProvidersGroup);
+  settingsArea.appendChild(currentProvidersGroup);
 
   // https://www.npmjs.com/package/text-ellipsis
   // cut off a string if too long
