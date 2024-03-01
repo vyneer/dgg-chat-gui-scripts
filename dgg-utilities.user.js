@@ -555,22 +555,6 @@ function injectScript() {
         nativeEmbedsConnect();
       }, nativeEmbedsReconnectCount*1000);
     }
-    nativeEmbedsWs.onerror = (error) => {
-      console.error(`[ERROR] [dgg-utils] error with the native dgg embeds websocket connection, reconnecting in ${nativeEmbedsReconnectCount} sec - ${error}`);
-      setTimeout(() => {
-        switch (true) {
-          case nativeEmbedsReconnectCount == 0:
-            nativeEmbedsReconnectCount = 1;
-            break;
-          case nativeEmbedsReconnectCount > 0 && nativeEmbedsReconnectCount < 32:
-            nativeEmbedsReconnectCount *= 2;
-            break;
-          default:
-            break;
-        }
-        nativeEmbedsConnect();
-      }, nativeEmbedsReconnectCount*1000);
-    }
   }
   if (EMBEDS_PROVIDER === "native" && window.parent.location.href.includes("embed")) {
     nativeEmbedsConnect();
