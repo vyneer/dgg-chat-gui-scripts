@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2024.03.01
-// @description  [dev] small, but useful tools for both regular dggers and newbies alike
+// @version      1.9
+// @description  small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 
 // ==Changelog==
-// v1.9
+// v1.9 - 2024-03-01
 // * add native embeds support
 // * pull data platforms from vyneer.me (eliminates the need for updates when native phrases/nukes/mutelinks get added)
 // * fix a nuke detection bug
