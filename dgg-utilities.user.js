@@ -3075,7 +3075,7 @@ function injectScript() {
           new DGGMsg(
             `${embedForm.format(entry.link, entry.channel, entry.title)} (${
               entry.count
-            } ${entry.count == 1 ? "embed" : "embeds"})`,
+            } ${EMBEDS_PROVIDER === "native" ? "watching" : entry.count == 1 ? "embed" : "embeds"})`,
             "msg-status msg-historical",
             ""
           ).update();
