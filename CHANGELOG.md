@@ -10,7 +10,6 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 - Add native embeds support
 - Pull data platforms from vyneer.me (eliminates the need for updates when native phrases/nukes/mutelinks get added)
 - Fix a nuke detection bug
-- Add an option to disable dgg emote/flair animations
 
 ## [1.8] - 2023-06-17
 
