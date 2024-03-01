@@ -552,7 +552,7 @@ function injectScript() {
           default:
             break;
         }
-        nativeEmbedsConnect(nativeEmbedsReconnectCount);
+        nativeEmbedsConnect();
       }, nativeEmbedsReconnectCount*1000);
     }
     nativeEmbedsWs.onerror = (error) => {
@@ -568,7 +568,7 @@ function injectScript() {
           default:
             break;
         }
-        nativeEmbedsConnect(nativeEmbedsReconnectCount);
+        nativeEmbedsConnect();
       }, nativeEmbedsReconnectCount*1000);
     }
   }
