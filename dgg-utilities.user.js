@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.8
-// @description  small, but useful tools for both regular dggers and newbies alike
+// @version      dev-2024.03.01
+// @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -19,6 +19,10 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.9
+// * add native embeds support
+// * pull data platforms from vyneer.me (eliminates the need for updates when native phrases/nukes/mutelinks get added)
+// * fix a nuke detection bug
 // v1.8 - 2023-06-17
 // * increased flair check range up to 100 for new flairs (big PepoTurkey to Voiture)
 // * add multi-stream chat embed support (big thanks to [@mattroseman](https://github.com/mattroseman) <3)
@@ -40,6 +44,11 @@
 // * add Rumble embeds
 // v1.7.1 - 2022-10-10
 // * remove the violentmonkey workaround
+
+let EMBEDS_PROVIDER = "native"; // possible options: vyneer, native, disabled
+let PHRASES_PROVIDER = "vyneer"; // possible options: vyneer, native
+let NUKES_PROVIDER = "vyneer"; // possible options: vyneer, native
+let MUTELINKS_PROVIDER = "vyneer"; // possible options: vyneer, native
 
 // DEBUG MODE, DON'T SET TO TRUE IF YOU DON'T KNOW WHAT YOU'RE DOING
 // replaces the data given by the server with data provided below and makes nuke/mutelinks buttons always active
@@ -161,6 +170,8 @@ const configItems = {
   twitchEmbedFormat : new ConfigItem("twitchEmbedFormat",  1       ),
   youtubeEmbedFormat: new ConfigItem("youtubeEmbedFormat", 1       ),
   rumbleEmbedFormat : new ConfigItem("rumbleEmbedFormat",  1       ),
+  nativeEmbedTop    : new ConfigItem("nativeEmbedTop",     5       ),
+  nativeEmbedLimit  : new ConfigItem("nativeEmbedLimit",   0       ),
   colorOnMutelinks  : new ConfigItem("colorOnMutelinks",   false   ),
   phraseColor       : new ConfigItem("phraseColor",        "1f0000"),
   nukeColor         : new ConfigItem("nukeColor",          "1f1500"),
@@ -177,6 +188,7 @@ const configItems = {
   stickyWhispers    : new ConfigItem("stickyWhispers",     false   ),
   ignorePhrases     : new ConfigItem("ignorePhrases",      false   ),
   ignoredPhraseList : new ConfigItem("ignoredPhraseList",  []      ),
+  ignoreProviders   : new ConfigItem("ignoreProviders",    false   ),
 };
 class Config {
   #configItems;
@@ -245,11 +257,51 @@ document.addEventListener(
   true
 );
 
-// firemonkey compatibility stuff pepeW
-if (document.readyState !== "loading") {
-  injectScript();
+if (config.ignoreProviders) {
+  if (document.readyState !== "loading") {
+    injectScript();
+  } else {
+    document.addEventListener("DOMContentLoaded", injectScript);
+  }
 } else {
-  document.addEventListener("DOMContentLoaded", injectScript);
+  GM.xmlHttpRequest({
+    method: "GET",
+    url: `https://vyneer.me/tools/providers`,
+    onload: (response) => {
+      if (response.status == 200) {
+        let data = JSON.parse(response.response);
+        if ("embeds" in data && "phrases" in data && "nukes" in data && "links" in data) {
+          EMBEDS_PROVIDER = data.embeds ?? EMBEDS_PROVIDER;
+          PHRASES_PROVIDER = data.phrases ?? PHRASES_PROVIDER;
+          NUKES_PROVIDER = data.nukes ?? NUKES_PROVIDER;
+          MUTELINKS_PROVIDER = data.links ?? MUTELINKS_PROVIDER;
+        }
+      } else {
+        console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP status code: ${response.status} - ${response.statusText}`);
+      }
+      if (document.readyState !== "loading") {
+        injectScript();
+      } else {
+        document.addEventListener("DOMContentLoaded", injectScript);
+      }
+    },
+    onerror: () => {
+      console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP error`);
+      if (document.readyState !== "loading") {
+        injectScript();
+      } else {
+        document.addEventListener("DOMContentLoaded", injectScript);
+      }
+    },
+    ontimeout: () => {
+      console.error(`[ERROR] [dgg-utils] couldn't get providers - HTTP timeout`);
+      if (document.readyState !== "loading") {
+        injectScript();
+      } else {
+        document.addEventListener("DOMContentLoaded", injectScript);
+      }
+    }
+  });
 }
 
 function injectScript() {
@@ -398,7 +450,7 @@ function injectScript() {
             updateCheck(updateDataFunc);
 
             // show embeds on launch
-            if (config.embedsOnLaunch) {
+            if (config.embedsOnLaunch && EMBEDS_PROVIDER !== "disabled") {
               embeds();
             }
 
@@ -474,6 +526,54 @@ function injectScript() {
       embedsButton_i.style.color = "transparent";
       embedsButton_i.style.textShadow = "0 0 white";
       break;
+  }
+
+  let nativeEmbedsWs = undefined;
+  let nativeEmbedsReconnectCount = 0;
+  const nativeEmbedsConnect = () => {
+    nativeEmbedsWs = new WebSocket("wss://live.destiny.gg/ws");
+    nativeEmbedsWs.onmessage = (event) => {
+      nativeEmbedsReconnectCount = 0;
+      let data = JSON.parse(event.data);
+      if (data.type == "dggApi:embeds") {
+        localStorage.setItem(data.type, JSON.stringify(data.data));
+      }
+    }
+    nativeEmbedsWs.onclose = (event) => {
+      console.warn(`[WARNING] [dgg-utils] closed the native dgg embeds websocket connection, reconnecting in ${nativeEmbedsReconnectCount} sec - ${event.code}: ${event.reason}`);
+      setTimeout(() => {
+        switch (true) {
+          case nativeEmbedsReconnectCount == 0:
+            nativeEmbedsReconnectCount = 1;
+            break;
+          case nativeEmbedsReconnectCount > 0 && nativeEmbedsReconnectCount < 32:
+            nativeEmbedsReconnectCount *= 2;
+            break;
+          default:
+            break;
+        }
+        nativeEmbedsConnect(nativeEmbedsReconnectCount);
+      }, nativeEmbedsReconnectCount*1000);
+    }
+    nativeEmbedsWs.onerror = (error) => {
+      console.error(`[ERROR] [dgg-utils] error with the native dgg embeds websocket connection, reconnecting in ${nativeEmbedsReconnectCount} sec - ${error}`);
+      setTimeout(() => {
+        switch (true) {
+          case nativeEmbedsReconnectCount == 0:
+            nativeEmbedsReconnectCount = 1;
+            break;
+          case nativeEmbedsReconnectCount > 0 && nativeEmbedsReconnectCount < 32:
+            nativeEmbedsReconnectCount *= 2;
+            break;
+          default:
+            break;
+        }
+        nativeEmbedsConnect(nativeEmbedsReconnectCount);
+      }, nativeEmbedsReconnectCount*1000);
+    }
+  }
+  if (EMBEDS_PROVIDER === "native" && window.parent.location.href.includes("embed")) {
+    nativeEmbedsConnect();
   }
 
   // making an error alert
@@ -552,11 +652,19 @@ function injectScript() {
   nukeAlertButton.appendChild(nukeAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_i);
   linksAlertButton.appendChild(linksAlertButton_span);
-  chatToolsArea.prepend(embedsButton);
-  chatToolsArea.prepend(sendAnywayButton);
+  if (EMBEDS_PROVIDER === "vyneer" || (window.parent.location.href.includes("embed") && EMBEDS_PROVIDER !== "disabled")) {
+    chatToolsArea.prepend(embedsButton);
+  }
+  if (PHRASES_PROVIDER === "vyneer" || NUKES_PROVIDER === "vyneer" || MUTELINKS_PROVIDER === "vyneer") {
+    chatToolsArea.prepend(sendAnywayButton);
+  }
   utilitiesButtons.appendChild(errorAlert);
-  utilitiesButtons.appendChild(nukeAlertButton);
-  utilitiesButtons.appendChild(linksAlertButton);
+  if (NUKES_PROVIDER === "vyneer") {
+    utilitiesButtons.appendChild(nukeAlertButton);
+  }
+  if (MUTELINKS_PROVIDER === "vyneer") {
+    utilitiesButtons.appendChild(linksAlertButton);
+  }
   chatWhispersArea.appendChild(utilitiesButtons);
 
   // creating the settings page
@@ -1194,6 +1302,42 @@ function injectScript() {
 
   embedIconStyleGroup.appendChild(embedIconStyleSelect);
 
+  // creating an ignore providers setting
+  let ignoreProvidersGroup = document.createElement("div");
+  ignoreProvidersGroup.className = "form-group checkbox";
+  let ignoreProvidersLabel = document.createElement("label");
+  ignoreProvidersLabel.innerHTML = "Ignore data providers set by the server";
+  ignoreProvidersGroup.appendChild(ignoreProvidersLabel);
+  let ignoreProvidersCheck = document.createElement("input");
+  ignoreProvidersCheck.name = "ignoreProviders";
+  ignoreProvidersCheck.type = "checkbox";
+  ignoreProvidersCheck.checked = config.ignoreProviders;
+  ignoreProvidersCheck.addEventListener("change", () => config.ignoreProviders = ignoreProvidersCheck.checked);
+  ignoreProvidersLabel.prepend(ignoreProvidersCheck);
+
+  let currentProvidersGroup = document.createElement("div");
+  currentProvidersGroup.className = "form-group";
+  currentProvidersGroup.style.display = "grid";
+  let currentProvidersLabel = document.createElement("label");
+  currentProvidersLabel.innerHTML = "Current data providers:";
+  currentProvidersGroup.appendChild(currentProvidersLabel);
+
+  let embedsProvider = document.createElement("span");
+  embedsProvider.innerText = `Embeds: ${EMBEDS_PROVIDER}`;
+  currentProvidersGroup.appendChild(embedsProvider);
+
+  let phrasesProvider = document.createElement("span");
+  phrasesProvider.innerText = `Phrases: ${PHRASES_PROVIDER}`;
+  currentProvidersGroup.appendChild(phrasesProvider);
+
+  let nukesProvider = document.createElement("span");
+  nukesProvider.innerText = `Nukes: ${NUKES_PROVIDER}`;
+  currentProvidersGroup.appendChild(nukesProvider);
+
+  let mutelinksProvider = document.createElement("span");
+  mutelinksProvider.innerText = `Mutelinks: ${MUTELINKS_PROVIDER}`;
+  currentProvidersGroup.appendChild(mutelinksProvider);
+
   // creating a show last steve vod setting
   let showLastVODGroup = document.createElement("div");
   showLastVODGroup.className = "form-group checkbox";
@@ -1394,6 +1538,44 @@ function injectScript() {
   rumbleEmbedFormatSelect.addEventListener("change", () => config.rumbleEmbedFormat = parseInt(rumbleEmbedFormatSelect.value));
 
   rumbleEmbedFormatGroup.appendChild(rumbleEmbedFormatSelect);
+
+  // creating an embed time value setting
+  let nativeEmbedLimitGroup = document.createElement("div");
+  nativeEmbedLimitGroup.className = "form-group row";
+  let nativeEmbedLimitLabel = document.createElement("label");
+  nativeEmbedLimitLabel.innerHTML = "Embed Viewcount Limit";
+  nativeEmbedLimitLabel.title = "Only show embeds where viewcount is > than this value. Values <= 0 mean show every embed";
+  nativeEmbedLimitLabel.style.marginBottom = 0;
+  nativeEmbedLimitGroup.appendChild(nativeEmbedLimitLabel);
+  let nativeEmbedLimitArea = document.createElement("input");
+  nativeEmbedLimitArea.name = "nativeEmbedLimitArea";
+  nativeEmbedLimitArea.type = "number";
+  nativeEmbedLimitArea.className = "form-control";
+  nativeEmbedLimitArea.min = 0;
+  nativeEmbedLimitArea.value = config.nativeEmbedLimit;
+  nativeEmbedLimitArea.style.width = "120px";
+  nativeEmbedLimitArea.style.marginLeft = ".6em";
+  nativeEmbedLimitArea.addEventListener("change", () => config.nativeEmbedLimit = nativeEmbedLimitArea.value);
+  nativeEmbedLimitGroup.appendChild(nativeEmbedLimitArea);
+
+  // creating an embed time value setting
+  let nativeEmbedTopGroup = document.createElement("div");
+  nativeEmbedTopGroup.className = "form-group row";
+  let nativeEmbedTopLabel = document.createElement("label");
+  nativeEmbedTopLabel.innerHTML = "Show Top X Embeds";
+  nativeEmbedTopLabel.title = "Only show top X embeds, where X is some arbitrary number > 0. Values <= 0 mean show every embed";
+  nativeEmbedTopLabel.style.marginBottom = 0;
+  nativeEmbedTopGroup.appendChild(nativeEmbedTopLabel);
+  let nativeEmbedTopArea = document.createElement("input");
+  nativeEmbedTopArea.name = "nativeEmbedTopArea";
+  nativeEmbedTopArea.type = "number";
+  nativeEmbedTopArea.className = "form-control";
+  nativeEmbedTopArea.min = 0;
+  nativeEmbedTopArea.value = config.nativeEmbedTop;
+  nativeEmbedTopArea.style.width = "120px";
+  nativeEmbedTopArea.style.marginLeft = ".6em";
+  nativeEmbedTopArea.addEventListener("change", () => config.nativeEmbedTop = nativeEmbedTopArea.value);
+  nativeEmbedTopGroup.appendChild(nativeEmbedTopArea);
 
   // creating an phrase textarea color setting
   let phraseColorGroup = document.createElement("div");
@@ -1694,8 +1876,17 @@ function injectScript() {
   editEmbedsCheck.name = "editEmbeds";
   editEmbedsCheck.type = "checkbox";
   editEmbedsCheck.checked = config.editEmbeds;
-  editEmbedsCheck.addEventListener("change", () => {
-    config.editEmbeds = editEmbedsCheck.checked;
+  if (EMBEDS_PROVIDER !== "disabled") {
+    editEmbedsCheck.addEventListener("change", () => {
+      config.editEmbeds = editEmbedsCheck.checked;
+      if (config.editEmbeds) {
+        embedObserver.observe(chatlines, {
+          childList: true,
+        });
+      } else {
+        embedObserver.disconnect();
+      }
+    });
     if (config.editEmbeds) {
       embedObserver.observe(chatlines, {
         childList: true,
@@ -1703,13 +1894,6 @@ function injectScript() {
     } else {
       embedObserver.disconnect();
     }
-  });
-  if (config.editEmbeds) {
-    embedObserver.observe(chatlines, {
-      childList: true,
-    });
-  } else {
-    embedObserver.disconnect();
   }
   editEmbedsLabel.prepend(editEmbedsCheck);
 
@@ -2084,29 +2268,48 @@ function injectScript() {
   settingsArea.appendChild(alwaysScrollDownGroup);
   settingsArea.appendChild(doubleClickCopyGroup);
   settingsArea.appendChild(embedChatGroup);
-  let embedsTitle = document.createElement("h4");
-  embedsTitle.innerHTML = "Utilities Embeds Settings";
+
   settingsArea.appendChild(changeTitleOnLiveGroup);
   settingsArea.appendChild(stickyMentionsGroup);
   settingsArea.appendChild(stickyWhispersGroup);
-  settingsArea.appendChild(embedIconStyleGroup);
+  if (EMBEDS_PROVIDER !== "disabled") {
+    settingsArea.appendChild(embedIconStyleGroup);
+  }
   settingsArea.appendChild(hideFlairsGroup);
-  settingsArea.appendChild(embedsTitle);
-  settingsArea.appendChild(showLastVODGroup);
-  settingsArea.appendChild(embedsOnLaunchGroup);
-  settingsArea.appendChild(lastEmbedsGroup);
-  settingsArea.appendChild(lastIfNoneGroup);
-  settingsArea.appendChild(embedTimeGroup);
-  settingsArea.appendChild(twitchEmbedFormatGroup);
-  settingsArea.appendChild(youtubeEmbedFormatGroup);
-  settingsArea.appendChild(rumbleEmbedFormatGroup);
+  let embedsTitle = document.createElement("h4");
+  embedsTitle.innerHTML = "Utilities Embeds Settings";
+  if (EMBEDS_PROVIDER !== "disabled") {
+    settingsArea.appendChild(embedsTitle);
+    settingsArea.appendChild(showLastVODGroup);
+    settingsArea.appendChild(embedsOnLaunchGroup);
+  }
+  if (EMBEDS_PROVIDER === "vyneer") {
+    settingsArea.appendChild(lastEmbedsGroup);
+    settingsArea.appendChild(lastIfNoneGroup);
+    settingsArea.appendChild(embedTimeGroup);
+    settingsArea.appendChild(twitchEmbedFormatGroup);
+    settingsArea.appendChild(youtubeEmbedFormatGroup);
+    settingsArea.appendChild(rumbleEmbedFormatGroup);
+  }
+  if (EMBEDS_PROVIDER === "native") {
+    settingsArea.appendChild(nativeEmbedTopGroup);
+    settingsArea.appendChild(nativeEmbedLimitGroup);
+  }
   let phrasesTitle = document.createElement("h4");
   phrasesTitle.innerHTML = "Utilities Phrases Settings";
   settingsArea.appendChild(phrasesTitle);
-  settingsArea.appendChild(colorOnMutelinksGroup);
-  settingsArea.appendChild(phraseColorGroup);
-  settingsArea.appendChild(nukeColorGroup);
-  settingsArea.appendChild(mutelinksColorGroup);
+  if (MUTELINKS_PROVIDER === "vyneer") {
+    settingsArea.appendChild(colorOnMutelinksGroup);
+  }
+  if (PHRASES_PROVIDER === "vyneer") {
+    settingsArea.appendChild(phraseColorGroup);
+  }
+  if (NUKES_PROVIDER === "vyneer") {
+    settingsArea.appendChild(nukeColorGroup);
+  }
+  if (MUTELINKS_PROVIDER === "vyneer") {
+    settingsArea.appendChild(mutelinksColorGroup);
+  }
   settingsArea.appendChild(customPhrasesGroup);
   settingsArea.appendChild(customPhrasesSoftGroup);
   settingsArea.appendChild(customColorGroup);
@@ -2122,8 +2325,26 @@ function injectScript() {
   settingsArea.appendChild(experimentalSubTitle);
   settingsArea.appendChild(ignoredPhrasesGroup);
   settingsArea.appendChild(preventEnterGroup);
-  settingsArea.appendChild(editEmbedsGroup);
+  if (EMBEDS_PROVIDER !== "disabled") {
+    settingsArea.appendChild(editEmbedsGroup);
+  }
+  if (EMBEDS_PROVIDER === "native") {
+    settingsArea.appendChild(twitchEmbedFormatGroup);
+    settingsArea.appendChild(youtubeEmbedFormatGroup);
+    settingsArea.appendChild(rumbleEmbedFormatGroup);
+  }
   settingsArea.appendChild(editEmbedPillGroup);
+  let debugTitle = document.createElement("h4");
+  debugTitle.innerHTML = "Utilities Debug Stuff";
+  debugTitle.style.marginBottom = "0px";
+  let debugSubTitle = document.createElement("h4");
+  debugSubTitle.innerHTML = "Don't touch if you don't know what you're doing.";
+  debugSubTitle.style.color = "orangered";
+  debugSubTitle.style.marginTop = "0px";
+  settingsArea.appendChild(debugTitle);
+  settingsArea.appendChild(debugSubTitle);
+  settingsArea.appendChild(ignoreProvidersGroup);
+  settingsArea.appendChild(currentProvidersGroup);
 
   // https://www.npmjs.com/package/text-ellipsis
   // cut off a string if too long
@@ -2182,16 +2403,18 @@ function injectScript() {
           source = "https://twitch.tv/" + str.split("/")[1];
           switch (config.twitchEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+              }
               break;
             default:
               replacerString =
@@ -2209,17 +2432,19 @@ function injectScript() {
           source = "https://twitch.tv/videos/" + str.split("/")[1];
           switch (config.twitchEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>'; 
+                break;
+              }
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2236,17 +2461,19 @@ function injectScript() {
           source = "https://clips.twitch.tv/" + str.split("/")[1];
           switch (config.twitchEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2263,67 +2490,77 @@ function injectScript() {
           source = "https://youtu.be/" + str.split("/")[1];
           switch (config.youtubeEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                channel +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  channel +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 3:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 4:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                channel +
-                '</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  channel +
+                  '</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 5:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                title +
-                '</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  title +
+                  '</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 6:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                channel +
-                ' (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel && title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  channel +
+                  ' (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2340,67 +2577,77 @@ function injectScript() {
           source = "https://rumble.com/embed/" + str.split("/")[1];
           switch (config.rumbleEmbedFormat) {
             case 2:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                channel +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  channel +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 3:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$2 (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$2 (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 4:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                channel +
-                '</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  channel +
+                  '</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 5:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                title +
-                '</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  title +
+                  '</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             case 6:
-              replacerString =
-                '$1<a class="externallink bookmarklink" href="' +
-                this.url +
-                '$2" target="' +
-                target +
-                '">$3/' +
-                channel +
-                ' (' +
-                title +
-                ')</a> <a class="externallink bookmarklink" href="' +
-                source +
-                '" target ="_blank">(source)</a>';
-              break;
+              if (channel && title) {
+                replacerString =
+                  '$1<a class="externallink bookmarklink" href="' +
+                  this.url +
+                  '$2" target="' +
+                  target +
+                  '">$3/' +
+                  channel +
+                  ' (' +
+                  title +
+                  ')</a> <a class="externallink bookmarklink" href="' +
+                  source +
+                  '" target ="_blank">(source)</a>';
+                break;
+              }
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2633,7 +2880,9 @@ function injectScript() {
     });
   }
 
-  getPhrases();
+  if (PHRASES_PROVIDER === "vyneer") {
+    getPhrases();
+  }
   
   // when no whisper tabs are opened, the chat window selector has no children
   const chatwindowselector = document.querySelector("#chat-windows-select");
@@ -2686,7 +2935,7 @@ function injectScript() {
         return false;
       }
 
-      if (phrases.length > 0) {
+      if (PHRASES_PROVIDER === "vyneer" && phrases.length > 0) {
         for (let entry of phrases) {
           if (typeof(entry) === 'string') {
             if (text.indexOf(entry) != -1) {
@@ -2702,7 +2951,7 @@ function injectScript() {
         }
       }
 
-      if (nukesCompiled.length > 0) {
+      if (NUKES_PROVIDER === "vyneer" && nukesCompiled.length > 0) {
         for (let entry of nukesCompiled) {
           if (typeof(entry) === 'string') {
             if (text.indexOf(entry) != -1) {
@@ -2718,7 +2967,7 @@ function injectScript() {
         }
       }
 
-      if (mutelinks && config.colorOnMutelinks) {
+      if (MUTELINKS_PROVIDER === "vyneer" && mutelinks && config.colorOnMutelinks) {
         for (let entry of mutelinksChecklist) {
           if (text.indexOf(entry) != -1) {
             resultLinks = true;
@@ -2817,16 +3066,16 @@ function injectScript() {
   textarea.addEventListener("keyup", (e) => {
       textScanner(e);
   });
-
+  
   // function to simplify appending embeds
-  function serveEmbeds(data, emb, ifnone) {
+  function serveEmbeds(data, emb, ifnone, native) {
     if (data.length > 0) {
       data.forEach((entry) => {
         if (!emb) {
           new DGGMsg(
             `${embedForm.format(entry.link, entry.channel, entry.title)} (${
               entry.count
-            } ${entry.count == 1 ? "embed" : "embeds"})`,
+            } ${EMBEDS_PROVIDER === "native" ? "watching" : entry.count == 1 ? "embed" : "embeds"})`,
             "msg-status msg-historical",
             ""
           ).update();
@@ -2881,11 +3130,19 @@ function injectScript() {
           });
         }
       } else {
-        new DGGMsg(
-          `Looks like there's no data regarding the last embeds.`,
-          "msg-error",
-          ""
-        ).update();
+        if (native) {
+          new DGGMsg(
+            `Looks like there's no data regarding the embeds.`,
+            "msg-error",
+            ""
+          ).update();
+        } else {
+          new DGGMsg(
+            `Looks like there's no data regarding the last embeds.`,
+            "msg-error",
+            ""
+          ).update();
+        }
       }
     }
   }
@@ -2898,75 +3155,130 @@ function injectScript() {
 
   // function to show embeds
   function embeds() {
-    let embedUrl;
+    if (EMBEDS_PROVIDER === "vyneer") {
+      let embedUrl;
 
-    if (!config.lastEmbeds) {
+      if (!config.lastEmbeds) {
+        new DGGMsg(
+          `Getting top 5 embeds in the last ${config.embedTime} minutes...`,
+          "msg-info",
+          ""
+        ).update();
+        embedUrl = `https://vyneer.me/tools/embeds?t=${config.embedTime}`;
+      } else {
+        new DGGMsg(`Getting last 5 embeds...`, "msg-info", "").update();
+        embedUrl = `https://vyneer.me/tools/embeds/last`;
+      }
+  
+      GM.xmlHttpRequest({
+        method: "GET",
+        url: embedUrl,
+        onload: (response) => {
+          if (response.status == 200) {
+            let embedData = JSON.parse(response.response);
+            if (config.lastEmbeds) {
+              embedData = embedData.reverse();
+            }
+            if (config.showLastVOD) {
+              GM.xmlHttpRequest({
+                method: "GET",
+                url: "https://vyneer.me/tools/ytvods",
+                onload: (response) => {
+                  let vodData = [];
+                  if (response.status == 200) {
+                    vodData = JSON.parse(response.response);
+                    if (vodData.length > 0) {
+                      new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
+                    } else {
+                      new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                      console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - the VOD db is empty`);
+                    }
+                  } else {
+                    new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                    console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP status code: ${response.status} - ${response.statusText}`);
+                  }
+                  serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+                },
+                onerror: () => {
+                  new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                  console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP error`);
+                },
+                ontimeout: () => {
+                  new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                  console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+                }
+              });
+            } else {
+              serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
+            }
+          } else {
+            new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+            console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - URL: ${embedUrl}, HTTP status code: ${response.status} - ${response.statusText}`);
+          }
+        },
+        onerror: () => {
+          new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+          console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP error`);
+        },
+        ontimeout: () => {
+          new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
+          console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+        }
+      });
+    } else {
       new DGGMsg(
-        `Getting top 5 embeds in the last ${config.embedTime} minutes...`,
+        `Getting native d.gg embeds data...`,
         "msg-info",
         ""
       ).update();
-      embedUrl = `https://vyneer.me/tools/embeds?t=${config.embedTime}`;
-    } else {
-      new DGGMsg(`Getting last 5 embeds...`, "msg-info", "").update();
-      embedUrl = `https://vyneer.me/tools/embeds/last`;
-    }
-
-    GM.xmlHttpRequest({
-      method: "GET",
-      url: embedUrl,
-      onload: (response) => {
-        if (response.status == 200) {
-          let embedData = JSON.parse(response.response);
-          if (config.lastEmbeds) {
-            embedData = embedData.reverse();
-          }
-          if (config.showLastVOD) {
-            GM.xmlHttpRequest({
-              method: "GET",
-              url: "https://vyneer.me/tools/ytvods",
-              onload: (response) => {
-                let vodData = [];
-                if (response.status == 200) {
-                  vodData = JSON.parse(response.response);
-                  if (vodData.length > 0) {
-                    new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
-                  } else {
-                    new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
-                    console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - the VOD db is empty`);
-                  }
-                } else {
-                  new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
-                  console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP status code: ${response.status} - ${response.statusText}`);
-                }
-                serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
-              },
-              onerror: () => {
-                new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
-                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP error`);
-              },
-              ontimeout: () => {
-                new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
-                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
-              }
-            });
-          } else {
-            serveEmbeds(embedData, config.lastEmbeds, config.lastIfNone);
-          }
-        } else {
-          new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
-          console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - URL: ${embedUrl}, HTTP status code: ${response.status} - ${response.statusText}`);
-        }
-      },
-      onerror: () => {
-        new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
-        console.error(`[ERROR] [dgg-utils] couldn't get the embeds data - HTTP error`);
-      },
-      ontimeout: () => {
-        new DGGMsg(`Couldn't get the embeds data, check the console for more details.`, "msg-error", "").update();
-        console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+      let rawEmbeds = JSON.parse(localStorage.getItem("dggApi:embeds") ?? "[]");
+      let embedData = rawEmbeds.map((element) => {
+                        if (config.nativeEmbedLimit <= 0 || element.count >= config.nativeEmbedLimit) {
+                          return {
+                            "link": `#${element.platform}/${element.id}`,
+                            "platform": element.platform,
+                            "channel": "",
+                            "title": "",
+                            "count": element.count,
+                          }
+                        }
+                      })
+      if (config.nativeEmbedTop > 0) {
+        embedData = embedData.slice(0, config.nativeEmbedTop)
       }
-    });
+      if (config.showLastVOD) {
+        GM.xmlHttpRequest({
+          method: "GET",
+          url: "https://vyneer.me/tools/ytvods",
+          onload: (response) => {
+            let vodData = [];
+            if (response.status == 200) {
+              vodData = JSON.parse(response.response);
+              if (vodData.length > 0) {
+                new DGGMsg(`Last Destiny VOD - ${embedForm.format(`#youtube/${vodData[0].id}`, "Destiny", vodData[0].title)}`, "msg-status msg-historical", "").update();
+              } else {
+                new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+                console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - the VOD db is empty`);
+              }
+            } else {
+              new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+              console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP status code: ${response.status} - ${response.statusText}`);
+            }
+            serveEmbeds(embedData, false, false, true);
+          },
+          onerror: () => {
+            new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+            console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP error`);
+          },
+          ontimeout: () => {
+            new DGGMsg(`Couldn't get the VOD data, check the console for more details.`, "msg-error", "").update();
+            console.error(`[ERROR] [dgg-utils] couldn't get the VOD data - HTTP timeout`);
+          }
+        });
+      } else {
+        serveEmbeds(embedData, false, false, true);
+      }
+    }
   }
 
   // function to see get latest timestamps of nukes/phrases/mutelinks
@@ -3032,7 +3344,7 @@ function injectScript() {
                 const regex = new RegExp(regexString, "i");
                 nukesCompiled.push(regex);
               } else {
-                nukesCompiled.push(entry.word);
+                nukesCompiled.push(entry.word.toLowerCase());
               }
             });
             nukeAlertButton.style.display = "";
@@ -3121,45 +3433,53 @@ function injectScript() {
     });
   }
 
-  getNukes();
-  getMutelinks();
-
-  setInterval(() => {
-    getNukesMutesPhrasesTimestamps();
-  }, 15000);
-
-  // make an observer move nuke/mutelinks buttons based on amount of whispers
-  let marginObserver = new MutationObserver((mutations) => {
-    utilitiesButtons.style.marginLeft = `${mutations[0].target.offsetWidth}px`;
-  });
-  marginObserver.observe(
-    document.querySelector("#chat-whisper-unread-indicator"),
-    { characterData: false, attributes: false, childList: true, subtree: false }
-  );
-
-  // adding an event listener to the nukes button
-  // once you press it it fetches nukes from vyneer.me and displays them in chat
-  nukeAlertButton.addEventListener("click", () => {
-    new DGGMsg(`Showing current nukes...`, "msg-info", "").update();
-
-    if (nukes.length > 0) {
-      nukes.forEach((result) => {
-        new DGGMsg(
-          `${result.word} (${result.type.toString().toLowerCase()}d for ${
-            result.duration
-          })`,
-          "msg-status msg-historical",
-          ""
-        ).update();
-      });
-    } else {
-      new DGGMsg(
-        `Looks like there's no data regarding the nukes.`,
-        "msg-error",
-        ""
-      ).update();
+  if (NUKES_PROVIDER === "vyneer" || MUTELINKS_PROVIDER === "vyneer") {
+    if (NUKES_PROVIDER === "vyneer") {
+      getNukes();
     }
-  });
+    if (MUTELINKS_PROVIDER === "vyneer") {
+      getMutelinks();
+    }
+
+    setInterval(() => {
+      getNukesMutesPhrasesTimestamps();
+    }, 15000);
+
+    // make an observer move nuke/mutelinks buttons based on amount of whispers
+    let marginObserver = new MutationObserver((mutations) => {
+      utilitiesButtons.style.marginLeft = `${mutations[0].target.offsetWidth}px`;
+    });
+    marginObserver.observe(
+      document.querySelector("#chat-whisper-unread-indicator"),
+      { characterData: false, attributes: false, childList: true, subtree: false }
+    );
+
+    if (NUKES_PROVIDER === "vyneer") {
+      // adding an event listener to the nukes button
+      // once you press it it fetches nukes from vyneer.me and displays them in chat
+      nukeAlertButton.addEventListener("click", () => {
+        new DGGMsg(`Showing current nukes...`, "msg-info", "").update();
+
+        if (nukes.length > 0) {
+          nukes.forEach((result) => {
+            new DGGMsg(
+              `${result.word} (${result.type.toString().toLowerCase()}d for ${
+                result.duration
+              })`,
+              "msg-status msg-historical",
+              ""
+            ).update();
+          });
+        } else {
+          new DGGMsg(
+            `Looks like there's no data regarding the nukes.`,
+            "msg-error",
+            ""
+          ).update();
+        }
+      });
+    }
+  }
 
   // helper function to query youtube with a stream id to get metadata about that stream, including the stream's title and the channel's name
   // the metadata is passed into the given callback function
