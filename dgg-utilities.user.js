@@ -314,7 +314,7 @@ function injectScript() {
   let livePill = undefined;
   try {
     livePill = !window.parent.location.href.includes("embed")
-    ? window.parent.document.querySelector("#embed-type")
+    ? window.parent.document.querySelector("#control-badges")
     : undefined
   } catch (e) {
     console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "change title on live" feature wont work - ${e}`);
@@ -329,12 +329,12 @@ function injectScript() {
         background-color: #030303;
         margin-left: 2.5%;
     }
-    
+
     #util-settings-btn:hover {
         cursor: pointer;
         border: 2px solid #B9B9B9;
     }
-  
+
     #util-settings #util-settings-form {
         margin: .9em 0;
     }
@@ -672,7 +672,7 @@ function injectScript() {
     document.querySelector("#chat-settings-btn").click();
     // show dgg util settings with a class change
     utilSettings.classList.toggle("active");
-    // if we havent opened the dgg utils settings pane before, make it scrollable with the nanoscroller thing 
+    // if we havent opened the dgg utils settings pane before, make it scrollable with the nanoscroller thing
     if (!settingsInit) {
       settingsInit = true;
     }
@@ -928,7 +928,7 @@ function injectScript() {
   embedChatButtonsContainer.appendChild(rumbleChatButton);
 
   // =========================================
-  // Functions for managing the embedded chats 
+  // Functions for managing the embedded chats
   // =========================================
 
   const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
@@ -1170,7 +1170,7 @@ function injectScript() {
       if (!window.parent.document.title.includes("LIVE")) {
         ogtitle = window.parent.document.title;
         window.parent.document.title = `LIVE - ${ogtitle}`;
-      } 
+      }
     } else {
       window.parent.document.title = ogtitle;
     }
@@ -1712,7 +1712,7 @@ function injectScript() {
       }
   });
   customPhrasesSoftGroup.appendChild(customPhrasesSoftArea);
-  
+
   // creating an custom phrase textarea color setting
   let customColorGroup = document.createElement("div");
   customColorGroup.className = "form-group row";
@@ -1894,7 +1894,8 @@ function injectScript() {
         if ('author_name' in metadata) {
           let channel = metadata['author_name'];
 
-          livePill.nextElementSibling.innerText = channel
+          livePill.parentElement.querySelector('#control-title').title = `Embedding ${channel}`
+          livePill.parentElement.querySelector('#control-title').innerText = `Embedding ${channel}`
         }
       });
     }
@@ -1909,11 +1910,6 @@ function injectScript() {
       }
     }
   });
-
-  // modify the styling of the pill to accommadate any longer youtube channels with spaces in the names
-  if (livePill != undefined) {
-    window.parent.document.getElementById("embed-type").style.whiteSpace = 'nowrap';
-  }
 
   let editEmbedPillGroup = document.createElement("div");
   editEmbedPillGroup.className = "form-group checkbox";
@@ -2428,7 +2424,7 @@ function injectScript() {
                   title +
                   ')</a> <a class="externallink bookmarklink" href="' +
                   source +
-                  '" target ="_blank">(source)</a>'; 
+                  '" target ="_blank">(source)</a>';
                 break;
               }
             default:
@@ -2869,11 +2865,11 @@ function injectScript() {
   if (PHRASES_PROVIDER === "vyneer") {
     getPhrases();
   }
-  
+
   // when no whisper tabs are opened, the chat window selector has no children
   const chatwindowselector = document.querySelector("#chat-windows-select");
   let dggIsActive = true;
-  
+
   // create an observer that will fire when the chat window selector is updated
   const windowObserver = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
@@ -2901,7 +2897,7 @@ function injectScript() {
     }
   });
 
-  windowObserver.observe(chatwindowselector, { 
+  windowObserver.observe(chatwindowselector, {
     childList: true,
     attributes: true,
   });
@@ -2933,7 +2929,7 @@ function injectScript() {
               result = true;
               break;
             }
-          } 
+          }
         }
       }
 
@@ -2949,7 +2945,7 @@ function injectScript() {
               resultNukes = true;
               break;
             }
-          } 
+          }
         }
       }
 
@@ -3004,7 +3000,7 @@ function injectScript() {
         document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
         if (config.preventEnter) {
           sendAnywayButton.style.display = "";
-        } 
+        }
       } else if (resultCustomSoft != undefined) {
         foundPhraseOrNuke = true;
         textarea.style.backgroundColor = `#${config.customSoftColor}`;
@@ -3041,20 +3037,20 @@ function injectScript() {
   textarea.addEventListener("paste", () => {
     pasted = true;
   });
-  
+
   textarea.addEventListener("input", (e) => {
     if (pasted) {
       textScanner(e);
       pasted = false;
     }
   });
-  
+
   // adding an event listener to chat's input box
   // every time you press a key it checks whether your text has spooky phrases in it
   textarea.addEventListener("keyup", (e) => {
       textScanner(e);
   });
-  
+
   // function to simplify appending embeds
   function serveEmbeds(data, emb, ifnone, native) {
     if (data.length > 0) {
@@ -3157,7 +3153,7 @@ function injectScript() {
         new DGGMsg(`Getting last 5 embeds...`, "msg-info", "").update();
         embedUrl = `https://vyneer.me/tools/embeds/last`;
       }
-  
+
       GM.xmlHttpRequest({
         method: "GET",
         url: embedUrl,
