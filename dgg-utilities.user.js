@@ -1894,8 +1894,8 @@ function injectScript() {
         if ('author_name' in metadata) {
           let channel = metadata['author_name'];
 
-          livePill.parentElement.querySelector('#control-title').title = `Embedding ${channel}`
-          livePill.parentElement.querySelector('#control-title').innerText = `Embedding ${channel}`
+          livePill.parentElement.parentElement.querySelector('#control-title').title = `Embedding ${channel}`
+          livePill.parentElement.parentElement.querySelector('#control-title').innerText = `Embedding ${channel}`
         }
       });
     }
