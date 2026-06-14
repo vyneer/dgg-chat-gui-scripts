@@ -1956,10 +1956,10 @@ function injectScript() {
 
   // creating hide invidual flairs setting
   const flairs = getAllFlairIds();
-  // creates flair1-flair100
+  // creates flair1-flair1000
   function getAllFlairIds() {
     const flairIds = [];
-    for (let i = 1; i <= 100; i++) {
+    for (let i = 1; i <= 1000; i++) {
       flairIds.push(`flair${i}`);
     }
     // Add other flair names
