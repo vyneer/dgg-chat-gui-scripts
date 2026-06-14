@@ -2353,7 +2353,7 @@ function injectScript() {
     constructor() {
       this.bigscreenPath = "/bigscreen";
       this.bigscreenregex = new RegExp(
-        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|#rumble|#kick|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
+        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|#rumble|#kick|#angelthump|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
         "g"
       );
 
@@ -2644,6 +2644,17 @@ function injectScript() {
           break;
         case "#kick":
           source = "https://kick.com/" + str.split("/")[1];
+          replacerString =
+            '$1<a class="externallink bookmarklink" href="' +
+            this.url +
+            '$2" target="' +
+            target +
+            '">$2</a> <a class="externallink bookmarklink" href="' +
+            source +
+            '" target ="_blank">(source)</a>';
+          break;
+        case "#angelthump":
+          source = "https://www.angelthump.com/" + str.split("/")[1];
           replacerString =
             '$1<a class="externallink bookmarklink" href="' +
             this.url +
