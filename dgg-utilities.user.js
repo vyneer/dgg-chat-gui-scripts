@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      dev-2024.07.04
+// @version      dev-2026.06.14
 // @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
@@ -23,6 +23,9 @@
 // * improve message filtering with mutelinks mode on
 // * fix `undefined` appearing in place of Twitch embeds with certain options selected
 // * fix "Add button to toggle to the currently embedded video's chat" and "Change tab title when Destiny is live" options
+// * fix title change not working with the re-redesign
+// * add native angelthump embeds
+// * fix flair hiding selector not showing enough flairs
 // v1.9 - 2024-03-01
 // * add native embeds support
 // * pull data platforms from vyneer.me (eliminates the need for updates when native phrases/nukes/mutelinks get added)
