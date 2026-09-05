@@ -995,7 +995,7 @@ function injectScript() {
   function getYoutubeChatURL() {
     // if the user is embedding a video while the stream is live, the embedded id will be favored
     const youtubeEmbedId = getYoutubeEmbedId() || getYoutubeLiveId() || getYoutubeHostId();
-    return youtubeEmbedId ? `https://www.youtube.com/live_chat?v=${youtubeEmbedId}&embed_domain=www.destiny.gg` : null;
+    return youtubeEmbedId ? `https://www.youtube.com/live_chat?v=${youtubeEmbedId}&embed_domain=www.destiny.gg&dark_theme=1` : null;
   }
   function getRumbleChatURL() {
     // if the user is embedding a video while the stream is live, the embedded id will be favored
