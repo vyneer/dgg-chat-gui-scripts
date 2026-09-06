@@ -7,7 +7,9 @@ and this project adheres/tries to adhere to [Semantic Versioning].
 
 ## [Unreleased]
 
-- ...
+- Improve message filtering with mutelinks mode on
+- Fix `undefined` appearing in place of Twitch embeds with certain options selected
+- Fix "Add button to toggle to the currently embedded video's chat" and "Change tab title when Destiny is live" options
 
 ## [1.9] - 2024-03-01
 

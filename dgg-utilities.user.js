@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         d.gg utilities
+// @name         [dev] d.gg utilities
 // @namespace    https://www.destiny.gg/
-// @version      1.9
-// @description  small, but useful tools for both regular dggers and newbies alike
+// @version      dev-2026.06.14
+// @description  [dev] small, but useful tools for both regular dggers and newbies alike
 // @author       vyneer
 // @match        *://*.destiny.gg/embed/chat*
 // @include      /https?:\/\/www\.destiny\.gg\/embed\/chat/
@@ -19,6 +19,13 @@
 // ==/UserScript==
 
 // ==Changelog==
+// v1.9.1
+// * improve message filtering with mutelinks mode on
+// * fix `undefined` appearing in place of Twitch embeds with certain options selected
+// * fix "Add button to toggle to the currently embedded video's chat" and "Change tab title when Destiny is live" options
+// * fix title change not working with the re-redesign
+// * add native angelthump embeds
+// * fix flair hiding selector not showing enough flairs
 // v1.9 - 2024-03-01
 // * add native embeds support
 // * pull data platforms from vyneer.me (eliminates the need for updates when native phrases/nukes/mutelinks get added)
@@ -42,8 +49,6 @@
 // v1.7.2 - 2022-12-31
 // * add an option to update the live pill for Youtube stream with channel name (big thanks to @mattroseman <3)
 // * add Rumble embeds
-// v1.7.1 - 2022-10-10
-// * remove the violentmonkey workaround
 
 let EMBEDS_PROVIDER = "native"; // possible options: vyneer, native, disabled
 let PHRASES_PROVIDER = "vyneer"; // possible options: vyneer, native
@@ -106,6 +111,7 @@ let phrasesEtag = "";
 let nukes = [];
 let nukesCompiled = [];
 let mutelinks = false;
+let mutelinksUser = "";
 let foundPhraseOrNuke = false;
 
 let nukesTimestamp = 0;
@@ -311,7 +317,7 @@ function injectScript() {
   let livePill = undefined;
   try {
     livePill = !window.parent.location.href.includes("embed")
-    ? window.parent.document.querySelector("#host-pill-type")
+    ? window.parent.document.querySelector("#control-badges")
     : undefined
   } catch (e) {
     console.warn(`[WARNING] [dgg-utils] script might be running in cross-origin frame, can't get the live pill, the "change title on live" feature wont work - ${e}`);
@@ -326,12 +332,12 @@ function injectScript() {
         background-color: #030303;
         margin-left: 2.5%;
     }
-    
+
     #util-settings-btn:hover {
         cursor: pointer;
         border: 2px solid #B9B9B9;
     }
-  
+
     #util-settings #util-settings-form {
         margin: .9em 0;
     }
@@ -669,7 +675,7 @@ function injectScript() {
     document.querySelector("#chat-settings-btn").click();
     // show dgg util settings with a class change
     utilSettings.classList.toggle("active");
-    // if we havent opened the dgg utils settings pane before, make it scrollable with the nanoscroller thing 
+    // if we havent opened the dgg utils settings pane before, make it scrollable with the nanoscroller thing
     if (!settingsInit) {
       settingsInit = true;
     }
@@ -925,7 +931,7 @@ function injectScript() {
   embedChatButtonsContainer.appendChild(rumbleChatButton);
 
   // =========================================
-  // Functions for managing the embedded chats 
+  // Functions for managing the embedded chats
   // =========================================
 
   const YOUTUBE_EMBED_RE = /^#youtube\/(.*)$/
@@ -1096,7 +1102,7 @@ function injectScript() {
     embedChatIFrame.setAttribute("seamless", "seamless");
     dggChatIFrame.parentNode.appendChild(embedChatIFrame);
 
-    window.parent.document.getElementById("chat-panel-tools").insertBefore(
+    window.parent.document.getElementById("chat-controls").insertBefore(
       embedChatButtonsContainer,
       window.parent.document.getElementById("refresh").nextSibling
     );
@@ -1167,7 +1173,7 @@ function injectScript() {
       if (!window.parent.document.title.includes("LIVE")) {
         ogtitle = window.parent.document.title;
         window.parent.document.title = `LIVE - ${ogtitle}`;
-      } 
+      }
     } else {
       window.parent.document.title = ogtitle;
     }
@@ -1709,7 +1715,7 @@ function injectScript() {
       }
   });
   customPhrasesSoftGroup.appendChild(customPhrasesSoftArea);
-  
+
   // creating an custom phrase textarea color setting
   let customColorGroup = document.createElement("div");
   customColorGroup.className = "form-group row";
@@ -1891,7 +1897,8 @@ function injectScript() {
         if ('author_name' in metadata) {
           let channel = metadata['author_name'];
 
-          livePill.nextElementSibling.innerText = channel
+          livePill.parentElement.parentElement.querySelector('#control-title').title = `Embedding ${channel}`
+          livePill.parentElement.parentElement.querySelector('#control-title').innerText = `Embedding ${channel}`
         }
       });
     }
@@ -1906,11 +1913,6 @@ function injectScript() {
       }
     }
   });
-
-  // modify the styling of the pill to accommadate any longer youtube channels with spaces in the names
-  if (livePill != undefined) {
-    window.parent.document.getElementById("host-pill-name").style.whiteSpace = 'nowrap';
-  }
 
   let editEmbedPillGroup = document.createElement("div");
   editEmbedPillGroup.className = "form-group checkbox";
@@ -1957,10 +1959,10 @@ function injectScript() {
 
   // creating hide invidual flairs setting
   const flairs = getAllFlairIds();
-  // creates flair1-flair100
+  // creates flair1-flair1000
   function getAllFlairIds() {
     const flairIds = [];
-    for (let i = 1; i <= 100; i++) {
+    for (let i = 1; i <= 1000; i++) {
       flairIds.push(`flair${i}`);
     }
     // Add other flair names
@@ -2313,7 +2315,6 @@ function injectScript() {
     settingsArea.appendChild(editEmbedsGroup);
   }
   if (EMBEDS_PROVIDER === "native") {
-    settingsArea.appendChild(twitchEmbedFormatGroup);
     settingsArea.appendChild(youtubeEmbedFormatGroup);
     settingsArea.appendChild(rumbleEmbedFormatGroup);
   }
@@ -2355,7 +2356,7 @@ function injectScript() {
     constructor() {
       this.bigscreenPath = "/bigscreen";
       this.bigscreenregex = new RegExp(
-        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|#rumble|#kick|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
+        /(^|\s)((#twitch|#twitch-vod|#twitch-clip|#youtube|#rumble|#kick|#angelthump|(?:https:\/\/|http:\/\/|)strims\.gg(?:\/angelthump|\/facebook|\/smashcast|\/twitch-vod|\/twitch|\/ustream|\/youtube-playlist|\/youtube)?)\/(?:[A-z0-9_\-]{3,64}))\b/,
         "g"
       );
 
@@ -2398,8 +2399,8 @@ function injectScript() {
                   ')</a> <a class="externallink bookmarklink" href="' +
                   source +
                   '" target ="_blank">(source)</a>';
+                break;
               }
-              break;
             default:
               replacerString =
                 '$1<a class="externallink bookmarklink" href="' +
@@ -2426,7 +2427,7 @@ function injectScript() {
                   title +
                   ')</a> <a class="externallink bookmarklink" href="' +
                   source +
-                  '" target ="_blank">(source)</a>'; 
+                  '" target ="_blank">(source)</a>';
                 break;
               }
             default:
@@ -2655,6 +2656,17 @@ function injectScript() {
             source +
             '" target ="_blank">(source)</a>';
           break;
+        case "#angelthump":
+          source = "https://www.angelthump.com/" + str.split("/")[1];
+          replacerString =
+            '$1<a class="externallink bookmarklink" href="' +
+            this.url +
+            '$2" target="' +
+            target +
+            '">$2</a> <a class="externallink bookmarklink" href="' +
+            source +
+            '" target ="_blank">(source)</a>';
+          break;
         case "strims.gg":
         case "strims.gg/angelthump":
         case "strims.gg/facebook":
@@ -2867,11 +2879,11 @@ function injectScript() {
   if (PHRASES_PROVIDER === "vyneer") {
     getPhrases();
   }
-  
+
   // when no whisper tabs are opened, the chat window selector has no children
   const chatwindowselector = document.querySelector("#chat-windows-select");
   let dggIsActive = true;
-  
+
   // create an observer that will fire when the chat window selector is updated
   const windowObserver = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
@@ -2899,7 +2911,7 @@ function injectScript() {
     }
   });
 
-  windowObserver.observe(chatwindowselector, { 
+  windowObserver.observe(chatwindowselector, {
     childList: true,
     attributes: true,
   });
@@ -2931,7 +2943,7 @@ function injectScript() {
               result = true;
               break;
             }
-          } 
+          }
         }
       }
 
@@ -2947,15 +2959,17 @@ function injectScript() {
               resultNukes = true;
               break;
             }
-          } 
+          }
         }
       }
 
       if (MUTELINKS_PROVIDER === "vyneer" && mutelinks && config.colorOnMutelinks) {
-        for (let entry of mutelinksChecklist) {
-          if (text.indexOf(entry) != -1) {
-            resultLinks = true;
-            break;
+        if (text.indexOf(mutelinksUser) != -1) {
+          for (let entry of mutelinksChecklist) {
+            if (text.indexOf(entry) != -1) {
+              resultLinks = true;
+              break;
+            }
           }
         }
       }
@@ -3000,7 +3014,7 @@ function injectScript() {
         document.body.style.setProperty("--flashing-color", `#${config.customColor}`);
         if (config.preventEnter) {
           sendAnywayButton.style.display = "";
-        } 
+        }
       } else if (resultCustomSoft != undefined) {
         foundPhraseOrNuke = true;
         textarea.style.backgroundColor = `#${config.customSoftColor}`;
@@ -3037,20 +3051,20 @@ function injectScript() {
   textarea.addEventListener("paste", () => {
     pasted = true;
   });
-  
+
   textarea.addEventListener("input", (e) => {
     if (pasted) {
       textScanner(e);
       pasted = false;
     }
   });
-  
+
   // adding an event listener to chat's input box
   // every time you press a key it checks whether your text has spooky phrases in it
   textarea.addEventListener("keyup", (e) => {
       textScanner(e);
   });
-  
+
   // function to simplify appending embeds
   function serveEmbeds(data, emb, ifnone, native) {
     if (data.length > 0) {
@@ -3153,7 +3167,7 @@ function injectScript() {
         new DGGMsg(`Getting last 5 embeds...`, "msg-info", "").update();
         embedUrl = `https://vyneer.me/tools/embeds/last`;
       }
-  
+
       GM.xmlHttpRequest({
         method: "GET",
         url: embedUrl,
@@ -3385,16 +3399,19 @@ function injectScript() {
           mutelinksTimestamp = parsedResponse.updatedAt;
           if (data[0] && data[0].status == "on") {
             mutelinks = true;
+            mutelinksUser = data[0].user.toLowerCase();
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `Links mentioning ${data[0].user} WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "on";
           } else if (data[0] && data[0].status == "all") {
             mutelinks = true;
+            mutelinksUser = "";
             linksAlertButton.style.display = "inline-flex";
             linksAlertButton.title = `ANY link WILL get you muted (${data[0].duration}).`;
             linksAlertButton_span.innerHTML = "all";
           } else if (data[0] && data[0].status == "off") {
             mutelinks = false;
+            mutelinksUser = "";
             if (linksAlertButton.style.display != "none") {
               linksAlertButton.style.display = "none";
               linksAlertButton.title = "Mutelinks";
