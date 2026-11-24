@@ -106,6 +106,26 @@ const mutelinksChecklist = [
   ".it"
 ];
 
+// escape a string so it can be safely put into innerHTML
+const escapeHtml = (s) => {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
+// check if a string is an absolute http(s) url
+const isHttpUrl = (u) => {
+  try {
+    const url = new URL(u);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (e) {
+    return false;
+  }
+};
+
 let phrases = [];
 let phrasesEtag = "";
 let nukes = [];
@@ -148,8 +168,11 @@ const updateCheck = (cb) => {
 }
 
 const gmUpdateDataFunc = (data) => {
-  if (data) {
-    window.open(data.link, '_blank').focus();
+  if (data && isHttpUrl(data.link)) {
+    const win = window.open(data.link, '_blank');
+    if (win) {
+      win.focus();
+    }
   }
 };
 GM.registerMenuCommand("Check for updates", () => {
@@ -445,8 +468,9 @@ function injectScript() {
             // if the API shows there's an update, show a message
             const updateDataFunc = (data) => {
               if (data) {
+                const link = isHttpUrl(data.link) ? ` here - <a href="${escapeHtml(data.link)}" target="_blank">${escapeHtml(data.link)}</a>` : "";
                 new DGGMsg(
-                  `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${data.version} here - <a href="${data.link}" target="_blank">${data.link}</a>`,
+                  `Hey! Looks like you're using an older version of d.gg utilities (v${GM_info.script.version}). You can download the latest version v${escapeHtml(data.version)}${link}`,
                   "msg-info msg-historical",
                   ""
                 );
@@ -748,7 +772,9 @@ function injectScript() {
   updateCheckGroup.append(updateCheckText);
   const updateDataFunc = (data) => {
     if (data) {
-      updateCheckText.href = data.link;
+      if (isHttpUrl(data.link)) {
+        updateCheckText.href = data.link;
+      }
       updateCheckText.target = '_blank';
       updateCheckText.textContent = `New version found (${data.version}), click to update`;
       updateCheckText.style.color = 'fuchsia';
@@ -2338,6 +2364,7 @@ function injectScript() {
     maxLength,
     { side = "end", ellipsis = "..." } = {}
   ) {
+    str = str ?? "";
     if (str.length > maxLength) {
       switch (side) {
         case "start":
@@ -2380,7 +2407,11 @@ function injectScript() {
       // Open embed links in a new tab when in embedded/popout chat.
       const target =
         this.currentPath === this.bigscreenPath ? "_top" : "_blank";
-      title = textEllipsis(title, 60);
+      // escape everything that ends up in the html, and double any `$`
+      // in title/channel so String.replace doesn't treat them as patterns
+      str = escapeHtml(str);
+      title = escapeHtml(textEllipsis(title, 60)).split("$").join("$$");
+      channel = escapeHtml(channel).split("$").join("$$");
       let source;
       let replacerString;
       switch (str.replace(this.bigscreenregex, "$3")) {
@@ -2680,6 +2711,9 @@ function injectScript() {
             this.bigscreenregex,
             '$1<a class="externallink bookmarklink" href="https://$2" target="_blank">$2</a>'
           );
+      }
+      if (replacerString === undefined) {
+        return str;
       }
       return str.replace(this.bigscreenregex, replacerString);
     }
@@ -3464,8 +3498,8 @@ function injectScript() {
         if (nukes.length > 0) {
           nukes.forEach((result) => {
             new DGGMsg(
-              `${result.word} (${result.type.toString().toLowerCase()}d for ${
-                result.duration
+              `${escapeHtml(result.word)} (${escapeHtml(result.type.toString().toLowerCase())}d for ${
+                escapeHtml(result.duration)
               })`,
               "msg-status msg-historical",
               ""
